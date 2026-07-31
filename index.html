@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Supervisiones de Campo</title>
+  <link rel="manifest" href="./manifest.json">
 <style>
   :root{
     --navy:#1E2761;
@@ -516,6 +517,11 @@ setInterval(()=>{ if(navigator.onLine) intentarSync(false); }, 15000);
 
 /* ---------- Init ---------- */
 openDB().then(render);
+  if('serviceWorker' in navigator){
+     window.addEventListener('load', ()=>{
+       navigator.serviceWorker.register('./sw.js').catch(err=>console.log('SW error', err));
+     });
+   }
 </script>
 </body>
 </html>

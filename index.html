@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Supervisiones de Campo</title>
+<style>
+  :root{
+    --navy:#1E2761;
+    --orange:#E8561A;
+    --bg:#f4f5f8;
+    --card:#ffffff;
+    --gray:#6b7280;
+    --green:#1f9d55;
+    --red:#d0342c;
+    --yellow:#e8a51a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:#1a1a2e;}
+  #app{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);display:flex;flex-direction:column;}
+
+  header{background:var(--navy);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:20;}
+  header .back{font-size:22px;cursor:pointer;padding:4px 8px;border-radius:8px;}
+  header .back:active{background:rgba(255,255,255,.15);}
+  header h1{font-size:16px;margin:0;font-weight:700;flex:1;line-height:1.2;}
+  header .sub{font-size:11px;opacity:.8;font-weight:400;}
+
+  .statusbar{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:#fff;border-bottom:1px solid #e5e7eb;font-size:12px;position:sticky;top:56px;z-index:19;}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
+  .dot.online{background:var(--green);}
+  .dot.offline{background:var(--red);}
+  .pending-badge{background:var(--orange);color:#fff;border-radius:10px;padding:2px 8px;font-weight:700;font-size:11px;}
+  .sync-btn{border:1px solid var(--navy);color:var(--navy);background:#fff;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;}
+
+  main{flex:1;padding:14px;overflow-y:auto;padding-bottom:90px;}
+
+  .card{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+  .card:active{background:#f0f1f5;}
+  .card .title{font-weight:700;color:var(--navy);font-size:15px;}
+  .card .meta{font-size:12px;color:var(--gray);margin-top:2px;}
+  .card .chev{color:var(--gray);font-size:18px;}
+  .badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;margin-left:6px;}
+  .badge.pend{background:#fff3e0;color:var(--orange);}
+  .badge.ok{background:#e7f7ed;color:var(--green);}
+
+  .fab{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:448px;background:var(--orange);color:#fff;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:700;box-shadow:0 4px 14px rgba(232,86,26,.4);z-index:15;}
+  .fab:active{opacity:.85;}
+
+  .empty{text-align:center;color:var(--gray);padding:60px 20px;font-size:14px;}
+
+  /* Modal / form */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:30;display:flex;align-items:flex-end;justify-content:center;}
+  .modal{background:#fff;width:100%;max-width:480px;border-radius:18px 18px 0 0;padding:20px;max-height:88vh;overflow-y:auto;}
+  .modal h2{color:var(--navy);font-size:17px;margin:0 0 14px;}
+  label{font-size:12px;font-weight:700;color:var(--gray);display:block;margin:12px 0 4px;}
+  input[type=text],textarea{width:100%;padding:11px;border:1.5px solid #e0e2e8;border-radius:10px;font-size:14px;font-family:inherit;background:#fafafa;}
+  textarea{min-height:90px;resize:vertical;}
+  .row{display:flex;gap:10px;margin-top:18px;}
+  .btn{flex:1;padding:13px;border-radius:10px;border:none;font-weight:700;font-size:14px;}
+  .btn.primary{background:var(--navy);color:#fff;}
+  .btn.ghost{background:#f0f1f5;color:var(--navy);}
+  .btn.record{background:var(--red);color:#fff;}
+  .btn.record.recording{background:#8a1410;}
+
+  .chip-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .chip{background:#eef0f6;border-radius:9px;padding:6px 10px;font-size:11px;display:flex;align-items:center;gap:6px;}
+  .chip .x{color:var(--red);font-weight:700;cursor:pointer;}
+  .thumb{width:60px;height:60px;border-radius:8px;object-fit:cover;}
+
+  .comentario{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .comentario .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .comentario .fecha{font-size:11px;color:var(--gray);}
+  .comentario .texto{font-size:14px;line-height:1.4;white-space:pre-wrap;}
+  .comentario .media{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  audio{width:100%;margin-top:8px;height:32px;}
+
+  .setup{padding:40px 24px;text-align:center;}
+  .setup h1{color:var(--navy);font-size:20px;}
+  .setup p{color:var(--gray);font-size:13px;margin-bottom:24px;}
+  .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:50;opacity:0;transition:opacity .3s;}
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   SUPERVISIONES DE CAMPO — App offline-first para auditores
+   Almacenamiento: IndexedDB
+   Sincroniza a: Google Sheets + Drive vía Apps Script
+   ========================================================= */
+
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVtHtFzAMUrF9zv0zCgwN6uFZIZQsHSTD5D0fI7yP56P9G-fGu5d5zchHKr27T3bFTpg/exec";
+
+const DB_NAME = "supervisiones_campo_db";
+const DB_VERSION = 1;
+let db;
+
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e)=>{
+      const d = e.target.result;
+      if(!d.objectStoreNames.contains('carpetas')) d.createObjectStore('carpetas',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('clientes')) d.createObjectStore('clientes',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('comentarios')) d.createObjectStore('comentarios',{keyPath:'id'});
+    };
+    req.onsuccess = (e)=>{ db = e.target.result; resolve(db); };
+    req.onerror = (e)=> reject(e);
+  });
+}
+
+function txStore(name, mode='readonly'){
+  return db.transaction(name, mode).objectStore(name);
+}
+function idbGetAll(store){
+  return new Promise((res)=>{
+    const out=[]; const req = txStore(store).openCursor();
+    req.onsuccess = e=>{
+      const cur = e.target.result;
+      if(cur){ out.push(cur.value); cur.continue(); } else res(out);
+    };
+    req.onerror = ()=>res(out);
+  });
+}
+function idbPut(store, obj){
+  return new Promise((res,rej)=>{
+    const req = txStore(store,'readwrite').put(obj);
+    req.onsuccess=()=>res(obj); req.onerror=(e)=>rej(e);
+  });
+}
+function idbGet(store, id){
+  return new Promise((res)=>{
+    const req = txStore(store).get(id);
+    req.onsuccess=()=>res(req.result); req.onerror=()=>res(null);
+  });
+}
+
+function uid(){ return 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,9); }
+function nowISO(){ return new Date().toISOString(); }
+function fmtFecha(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) + ' ' + d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ---------- Estado de sesión ---------- */
+let AUDITOR = localStorage.getItem('sc_auditor') || '';
+
+/* ---------- Navegación simple (hash-based) ---------- */
+let currentView = {name:'carpetas'};
+
+async function render(){
+  const app = document.getElementById('app');
+  if(!AUDITOR){
+    app.innerHTML = viewSetup();
+    return;
+  }
+  if(currentView.name === 'carpetas') app.innerHTML = await viewCarpetas();
+  else if(currentView.name === 'clientes') app.innerHTML = await viewClientes(currentView.carpetaId);
+  else if(currentView.name === 'comentarios') app.innerHTML = await viewComentarios(currentView.clienteId);
+  attachHandlers();
+}
+
+/* ---------- Vista: Setup inicial ---------- */
+function viewSetup(){
+  return `
+  <div class="setup">
+    <h1>Supervisiones de Campo</h1>
+    <p>Ingresa tu nombre para comenzar. Se guarda solo en este dispositivo.</p>
+    <input type="text" id="inpAuditor" placeholder="Nombre del auditor" style="text-align:center;font-size:16px;padding:14px;"/>
+    <div class="row">
+      <button class="btn primary" style="width:100%" onclick="guardarAuditor()">Continuar</button>
+    </div>
+  </div>`;
+}
+function guardarAuditor(){
+  const v = document.getElementById('inpAuditor').value.trim();
+  if(!v){ toast('Escribe tu nombre'); return; }
+  AUDITOR = v;
+  localStorage.setItem('sc_auditor', v);
+  render();
+}
+
+/* ---------- Vista: Lista de Carpetas (regiones/plazas) ---------- */
+async function viewCarpetas(){
+  const carpetas = (await idbGetAll('carpetas')).filter(c=>c.auditor===AUDITOR).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  const pend = await contarPendientes();
+  let html = headerHTML('Mis Carpetas', AUDITOR, false) + statusBarHTML(pend) + '<main>';
+  if(carpetas.length===0){
+    html += `<div class="empty">Aún no tienes carpetas.<br>Crea una para empezar (ej. "Motozintla").</div>`;
+  } else {
+    carpetas.forEach(c=>{
+      html += `<div class="card" onclick="abrirCarpeta('${c.id}')">
+        <div><div class="title">${escapeHtml(c.nombre)}</div><div class="meta">${fmtFecha(c.createdAt)}</div></div>
+        <div class="chev">›</div>
+      </div>`;
+    });
+  }
+  html += '</main>' + fabHTML('+ Nueva Carpeta','abrirModalCarpeta()');
+  return html;
+}
+function abrirCarpeta(id){ currentView = {name:'clientes', carpetaId:id}; render(); }
+
+function abrirModalCarpeta(){
+  showModal(`
+    <h2>Nueva Carpeta</h2>
+    <label>Nombre (región / plaza)</label>
+    <input type="text" id="mCarpetaNombre" placeholder="Ej. Motozintla">
+    <div class="row">
+      <button class="btn ghost" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn primary" onclick="crearCarpeta()">Guardar</button>
+    </div>
+  `);
+}
+async function crearCarpeta(){
+  const nombre = document.getElementById('mCarpetaNombre').value.trim();
+  if(!nombre){ toast('Escribe un nombre'); return; }
+  const obj = {id:uid(), nombre, auditor:AUDITOR, createdAt:nowISO(), synced:false};
+  await idbPut('carpetas', obj);
+  encolarSync('carpeta', obj);
+  cerrarModal();
+  render();
+  intentarSync();
+}
+
+/* ---------- Vista: Lista de Clientes dentro de una carpeta ---------- */
+async function viewClientes(carpetaId){
+  const carpeta = await idbGet('carpetas', carpetaId);
+  const clientes = (await idbGetAll('clientes')).filter(c=>c.carpetaId===carpetaId).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  const pend = await contarPendientes();
+  let html = headerHTML(carpeta ? carpeta.nombre : 'Clientes', 'Clientes', true) + statusBarHTML(pend) + '<main>';
+  if(clientes.length===0){
+    html += `<div class="empty">Sin clientes todavía en esta carpeta.</div>`;
+  } else {
+    clientes.forEach(c=>{
+      html += `<div class="card" onclick="abrirCliente('${c.id}')">
+        <div><div class="title">${escapeHtml(c.nombre)}</div><div class="meta">${c.expediente? 'Exp. '+escapeHtml(c.expediente)+' · ':''}${fmtFecha(c.createdAt)}</div></div>
+        <div class="chev">›</div>
+      </div>`;
+    });
+  }
+  html += '</main>' + fabHTML('+ Nuevo Cliente', `abrirModalCliente('${carpetaId}')`);
+  return html;
+}
+function abrirCliente(id){ currentView = {name:'comentarios', clienteId:id}; render(); }
+function volverACarpetas(){ currentView = {name:'carpetas'}; render(); }
+
+function abrirModalCliente(carpetaId){
+  showModal(`
+    <h2>Nuevo Cliente</h2>
+    <label>Nombre del cliente</label>
+    <input type="text" id="mClienteNombre" placeholder="Nombre completo">
+    <label>No. de expediente (opcional)</label>
+    <input type="text" id="mClienteExp" placeholder="Ej. AI-2026-...">
+    <div class="row">
+      <button class="btn ghost" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn primary" onclick="crearCliente('${carpetaId}')">Guardar</button>
+    </div>
+  `);
+}
+async function crearCliente(carpetaId){
+  const nombre = document.getElementById('mClienteNombre').value.trim();
+  const expediente = document.getElementById('mClienteExp').value.trim();
+  if(!nombre){ toast('Escribe el nombre del cliente'); return; }
+  const obj = {id:uid(), carpetaId, nombre, expediente, auditor:AUDITOR, createdAt:nowISO(), synced:false};
+  await idbPut('clientes', obj);
+  encolarSync('cliente', obj);
+  cerrarModal();
+  render();
+  intentarSync();
+}
+
+/* ---------- Vista: Comentarios de un cliente ---------- */
+async function viewComentarios(clienteId){
+  const cliente = await idbGet('clientes', clienteId);
+  const comentarios = (await idbGetAll('comentarios')).filter(c=>c.clienteId===clienteId).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  const pend = await contarPendientes();
+  let html = headerHTML(cliente?cliente.nombre:'Cliente','Comentarios', true, ()=>{}) + statusBarHTML(pend) + '<main>';
+  html = html.replace('__BACKFN__','volverAClientes(\''+(cliente?cliente.carpetaId:'')+'\')');
+  if(comentarios.length===0){
+    html += `<div class="empty">Sin comentarios aún para este cliente.</div>`;
+  } else {
+    comentarios.forEach(c=>{
+      html += `<div class="comentario">
+        <div class="top">
+          <span class="fecha">${fmtFecha(c.createdAt)} · ${escapeHtml(c.auditor)}</span>
+          <span class="badge ${c.synced?'ok':'pend'}">${c.synced?'Sincronizado':'Pendiente'}</span>
+        </div>
+        <div class="texto">${escapeHtml(c.texto)}</div>
+        <div class="media">
+          ${(c.fotos||[]).map(f=>`<img class="thumb" src="${f}">`).join('')}
+        </div>
+        ${c.audio? `<audio controls src="${c.audio}"></audio>` : ''}
+      </div>`;
+    });
+  }
+  html += '</main>' + fabHTML('+ Nuevo Comentario', `abrirModalComentario('${clienteId}')`);
+  return html;
+}
+function volverAClientes(carpetaId){ currentView = {name:'clientes', carpetaId}; render(); }
+
+let fotosTemp = [];
+let audioTemp = null;
+let mediaRecorder = null;
+let audioChunks = [];
+
+function abrirModalComentario(clienteId){
+  fotosTemp = []; audioTemp = null;
+  showModal(`
+    <h2>Nuevo Comentario</h2>
+    <label>Comentario de la entrevista</label>
+    <textarea id="mComentarioTexto" placeholder="Escribe lo observado en la visita..."></textarea>
+
+    <label>Fotos</label>
+    <input type="file" id="mFotoInput" accept="image/*" multiple style="display:none" onchange="agregarFotos(event)">
+    <button class="btn ghost" style="width:100%" onclick="document.getElementById('mFotoInput').click()">📷 Agregar foto(s)</button>
+    <div class="chip-row" id="fotosPreview"></div>
+
+    <label>Audio</label>
+    <button class="btn record" id="btnRecord" style="width:100%" onclick="toggleGrabacion()">🎙️ Grabar audio</button>
+    <div id="audioPreview"></div>
+
+    <div class="row">
+      <button class="btn ghost" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn primary" onclick="guardarComentario('${clienteId}')">Guardar</button>
+    </div>
+  `);
+}
+
+function agregarFotos(event){
+  const files = Array.from(event.target.files);
+  let pendCount = files.length;
+  files.forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = e=>{
+      fotosTemp.push(e.target.result);
+      renderFotosPreview();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function renderFotosPreview(){
+  const el = document.getElementById('fotosPreview');
+  if(!el) return;
+  el.innerHTML = fotosTemp.map((f,i)=>`
+    <div class="chip"><img class="thumb" style="width:30px;height:30px" src="${f}"> <span class="x" onclick="quitarFoto(${i})">✕</span></div>
+  `).join('');
+}
+function quitarFoto(i){ fotosTemp.splice(i,1); renderFotosPreview(); }
+
+async function toggleGrabacion(){
+  const btn = document.getElementById('btnRecord');
+  if(!mediaRecorder || mediaRecorder.state === 'inactive'){
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e=> audioChunks.push(e.data);
+      mediaRecorder.onstop = ()=>{
+        const blob = new Blob(audioChunks, {type:'audio/webm'});
+        const reader = new FileReader();
+        reader.onload = e=>{
+          audioTemp = e.target.result;
+          document.getElementById('audioPreview').innerHTML = `<audio controls src="${audioTemp}" style="margin-top:8px"></audio>`;
+        };
+        reader.readAsDataURL(blob);
+        stream.getTracks().forEach(t=>t.stop());
+      };
+      mediaRecorder.start();
+      btn.textContent = '⏹️ Detener grabación';
+      btn.classList.add('recording');
+    }catch(err){
+      toast('No se pudo acceder al micrófono');
+    }
+  } else {
+    mediaRecorder.stop();
+    btn.textContent = '🎙️ Grabar audio';
+    btn.classList.remove('recording');
+  }
+}
+
+async function guardarComentario(clienteId){
+  const texto = document.getElementById('mComentarioTexto').value.trim();
+  if(!texto && fotosTemp.length===0 && !audioTemp){ toast('Agrega texto, foto o audio'); return; }
+  const obj = {
+    id:uid(), clienteId, texto, fotos:[...fotosTemp], audio:audioTemp,
+    auditor:AUDITOR, createdAt:nowISO(), synced:false
+  };
+  await idbPut('comentarios', obj);
+  encolarSync('comentario', obj);
+  cerrarModal();
+  render();
+  intentarSync();
+}
+
+/* ---------- Componentes de UI reutilizables ---------- */
+function headerHTML(title, sub, showBack){
+  return `<header>
+    ${showBack? `<div class="back" onclick="history.back ? null : null; ${title? '': ''}" id="btnBack">←</div>`:''}
+    <div><h1>${escapeHtml(title)}</h1><div class="sub">${escapeHtml(sub)}</div></div>
+  </header>`;
+}
+function statusBarHTML(pend){
+  const online = navigator.onLine;
+  return `<div class="statusbar">
+    <span><span class="dot ${online?'online':'offline'}"></span>${online?'En línea':'Sin conexión'}</span>
+    <span>${pend>0? `<span class="pending-badge">${pend} pendiente(s)</span>` : '<span style="color:#1f9d55">Todo sincronizado</span>'}</span>
+    <button class="sync-btn" onclick="intentarSync(true)">Sincronizar</button>
+  </div>`;
+}
+function fabHTML(label, onclick){
+  return `<button class="fab" onclick="${onclick}">${label}</button>`;
+}
+function showModal(innerHtml){
+  const overlay = document.createElement('div');
+  overlay.className='modal-overlay';
+  overlay.id='modalOverlay';
+  overlay.innerHTML = `<div class="modal">${innerHtml}</div>`;
+  document.body.appendChild(overlay);
+}
+function cerrarModal(){
+  const o = document.getElementById('modalOverlay');
+  if(o) o.remove();
+}
+function escapeHtml(s){
+  if(!s) return '';
+  return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* Fix back button handlers after render (delegation via data since inline onclick uses closures) */
+function attachHandlers(){
+  const back = document.getElementById('btnBack');
+  if(back){
+    back.onclick = ()=>{
+      if(currentView.name==='clientes') volverACarpetas();
+      else if(currentView.name==='comentarios'){
+        idbGet('clientes', currentView.clienteId).then(cli=>{
+          currentView = {name:'clientes', carpetaId: cli? cli.carpetaId : null};
+          render();
+        });
+      }
+    };
+  }
+}
+
+/* =========================================================
+   SINCRONIZACIÓN
+   ========================================================= */
+const SYNC_QUEUE_KEY = 'sc_sync_queue';
+
+function getQueue(){
+  try{ return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]'); }catch(e){ return []; }
+}
+function setQueue(q){ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); }
+function encolarSync(tipo, data){
+  const q = getQueue();
+  q.push({tipo, id:data.id, addedAt:nowISO()});
+  setQueue(q);
+}
+async function contarPendientes(){
+  return getQueue().length;
+}
+
+let syncing = false;
+async function intentarSync(manual){
+  if(syncing) return;
+  if(!navigator.onLine){
+    if(manual) toast('Sin conexión, se sincronizará al recuperar internet');
+    return;
+  }
+  if(APPS_SCRIPT_URL.includes('PEGA_AQUI')){
+    if(manual) toast('Falta configurar la URL del backend (Apps Script)');
+    return;
+  }
+  syncing = true;
+  const q = getQueue();
+  if(q.length===0){ syncing=false; if(manual) toast('Todo sincronizado'); return; }
+  let restante = [];
+  for(const item of q){
+    try{
+      const store = item.tipo==='carpeta'?'carpetas':item.tipo==='cliente'?'clientes':'comentarios';
+      const data = await idbGet(store, item.id);
+      if(!data){ continue; } // ya no existe, se descarta
+      if(data.synced){ continue; }
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method:'POST',
+        headers:{'Content-Type':'text/plain'},
+        body: JSON.stringify({tipo:item.tipo, data})
+      });
+      const json = await resp.json();
+      if(json && json.ok){
+        data.synced = true;
+        await idbPut(store, data);
+      } else {
+        restante.push(item);
+      }
+    }catch(err){
+      restante.push(item);
+    }
+  }
+  setQueue(restante);
+  syncing = false;
+  if(manual) toast(restante.length===0? 'Sincronización completa' : `${restante.length} pendiente(s), reintentando...`);
+  render();
+}
+
+window.addEventListener('online', ()=>intentarSync(false));
+setInterval(()=>{ if(navigator.onLine) intentarSync(false); }, 15000);
+
+/* ---------- Init ---------- */
+openDB().then(render);
+</script>
+</body>
+</html>

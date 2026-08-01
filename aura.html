@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -96,15 +97,12 @@
   <button class="btn ghost" onclick="cargarDatos()">🔄 Actualizar</button>
 </header>
 
-<div style="background:#fff;border-bottom:1px solid #e5e7eb;padding:10px 24px;display:flex;align-items:center;gap:10px;font-size:13px;">
-  <span style="color:var(--gray);font-weight:600;">🔑 Clave API de Anthropic (solo esta sesión, no se guarda):</span>
-  <input type="password" id="apiKeyInput" placeholder="sk-ant-..." style="flex:1;max-width:400px;padding:7px 10px;">
-  <span id="apiKeyEstado" style="color:var(--gray);font-size:12px;"></span>
-</div>
-
-<div class="tabs">
-  <div class="tab active" data-tab="comentarios" onclick="cambiarTab('comentarios')">Comentarios de Campo</div>
-  <div class="tab" data-tab="informe" onclick="cambiarTab('informe')">Informe de Auditoría</div>
+<div class="tabs" style="justify-content:space-between;align-items:center;">
+  <div style="display:flex;">
+    <div class="tab active" data-tab="comentarios" onclick="cambiarTab('comentarios')">Comentarios de Campo</div>
+    <div class="tab" data-tab="informe" onclick="cambiarTab('informe')">Informe de Auditoría</div>
+  </div>
+  <a href="#" onclick="cambiarClaveIA();return false;" style="color:var(--gray);font-size:12px;padding-right:10px;">🔑 Clave de IA</a>
 </div>
 
 <main>
@@ -169,9 +167,22 @@ const ORANGE = "E8561A";
 const LIGHTGRAY = "F0F1F5";
 
 let DATOS = { carpetas: [], clientes: [], comentarios: [] };
-let filtro = { tipo: null, id: null };
+let filtro = { tipo: null, id: null }; // tipo: 'carpeta' | 'cliente'
 let hallazgoContador = 0;
 let CLAVE = '';
+let API_KEY = '';
+
+function cambiarClaveIA(){
+  const v = prompt('Clave de API de Anthropic (solo se guarda mientras tengas esta página abierta):', API_KEY || '');
+  if(v !== null && v.trim()){ API_KEY = v.trim(); }
+}
+function asegurarClaveIA(){
+  if(!API_KEY){
+    const v = prompt('Escribe tu clave de API de Anthropic para poder generar el hallazgo (solo se usará en esta sesión):');
+    if(v && v.trim()) API_KEY = v.trim();
+  }
+  return API_KEY;
+}
 
 function verificarClave(){
   const v = document.getElementById('claveInput').value.trim();
@@ -187,7 +198,7 @@ let intervaloAuto = null;
 function iniciarAutoActualizacion(){
   if(intervaloAuto) return;
   intervaloAuto = setInterval(()=>{
-    if(CLAVE) cargarDatos();
+    if(CLAVE) cargarDatos(true);
   }, 3000);
 }
 
@@ -262,8 +273,13 @@ function cambiarTab(nombre){
   document.getElementById('tabInforme').style.display = nombre==='informe' ? 'block':'none';
 }
 
-async function cargarDatos(){
-  document.getElementById('arbol').innerHTML = '<div class="empty">Cargando...</div>';
+let actualizando = false;
+async function cargarDatos(esAutomatico){
+  if(actualizando) return;
+  actualizando = true;
+  if(!esAutomatico){
+    document.getElementById('arbol').innerHTML = '<div class="empty">Cargando...</div>';
+  }
   try{
     const resp = await fetch(APPS_SCRIPT_URL + '?accion=datos&clave=' + encodeURIComponent(CLAVE));
     const json = await resp.json();
@@ -276,11 +292,15 @@ async function cargarDatos(){
       alert('Clave incorrecta. Vuelve a intentarlo.');
       document.getElementById('plataforma').style.display = 'none';
       document.getElementById('pantallaLogin').style.display = 'block';
-    } else {
+    } else if(!esAutomatico){
       document.getElementById('arbol').innerHTML = '<div class="empty">Error al cargar datos.</div>';
     }
   }catch(err){
-    document.getElementById('arbol').innerHTML = '<div class="empty">Sin conexión con el backend.</div>';
+    if(!esAutomatico){
+      document.getElementById('arbol').innerHTML = '<div class="empty">Sin conexión con el backend.</div>';
+    }
+  }finally{
+    actualizando = false;
   }
 }
 
@@ -396,13 +416,13 @@ function agregarHallazgo(datos){
   document.getElementById('listaHallazgos').appendChild(div);
   return id;
 }
-agregarHallazgo();
+agregarHallazgo(); // arranca con 1 hallazgo listo para llenar
 
 function escapeAttr(s){ return escapeHtml(s||'').replace(/"/g,'&quot;'); }
 
 async function generarHallazgoConIA(clienteId){
-  const apiKey = document.getElementById('apiKeyInput').value.trim();
-  if(!apiKey){ alert('Primero escribe tu clave de API de Anthropic arriba.'); return; }
+  const apiKey = asegurarClaveIA();
+  if(!apiKey){ return; }
 
   const cliente = DATOS.clientes.find(c=>c.id===clienteId);
   const comentariosCliente = DATOS.comentarios.filter(c=>c.clienteId===clienteId);
@@ -481,7 +501,7 @@ async function exportarWord(){
   const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
           WidthType, ShadingType, HeadingLevel, AlignmentType, BorderStyle } = docx;
 
-  const anchoTotal = 9350;
+  const anchoTotal = 9350; // DXA, ancho útil aprox en carta con márgenes normales
   const colEtiqueta = 2200;
   const colValor = anchoTotal - colEtiqueta;
 
@@ -595,6 +615,7 @@ async function exportarWord(){
 }
 
 /* ---------- Init ---------- */
+// La carga de datos ahora se dispara después de verificar la clave (ver verificarClave())
 </script>
 </body>
 </html>

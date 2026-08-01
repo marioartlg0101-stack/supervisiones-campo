@@ -180,6 +180,15 @@ function verificarClave(){
   document.getElementById('pantallaLogin').style.display = 'none';
   document.getElementById('plataforma').style.display = 'block';
   cargarDatos();
+  iniciarAutoActualizacion();
+}
+
+let intervaloAuto = null;
+function iniciarAutoActualizacion(){
+  if(intervaloAuto) return;
+  intervaloAuto = setInterval(()=>{
+    if(CLAVE) cargarDatos();
+  }, 3000);
 }
 
 function mostrarRecuperacion(){

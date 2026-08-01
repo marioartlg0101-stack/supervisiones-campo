@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AURA - Supervisiones de Campo</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+<style>
+  :root{
+    --navy:#1E2761; --orange:#E8561A; --bg:#f4f5f8; --card:#ffffff;
+    --gray:#6b7280; --green:#1f9d55; --red:#d0342c; --border:#e5e7eb;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:#1a1a2e;}
+  header{background:var(--navy);color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;}
+  header h1{font-size:18px;margin:0;}
+  header .sub{font-size:12px;opacity:.8;}
+  .tabs{display:flex;background:#fff;border-bottom:2px solid var(--border);padding:0 24px;}
+  .tab{padding:14px 20px;cursor:pointer;font-weight:600;color:var(--gray);border-bottom:3px solid transparent;}
+  .tab.active{color:var(--navy);border-bottom-color:var(--orange);}
+  main{padding:24px;max-width:1200px;margin:0 auto;}
+  .toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+  input[type=text], select{padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;background:#fff;}
+  .btn{padding:10px 18px;border-radius:8px;border:none;font-weight:700;font-size:13px;cursor:pointer;}
+  .btn.primary{background:var(--navy);color:#fff;}
+  .btn.orange{background:var(--orange);color:#fff;}
+  .btn.ghost{background:#eef0f6;color:var(--navy);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+
+  .layout{display:grid;grid-template-columns:280px 1fr;gap:20px;align-items:start;}
+  .panel{background:var(--card);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .tree{padding:10px;}
+  .tree-carpeta{padding:10px 12px;font-weight:700;color:var(--navy);cursor:pointer;border-radius:8px;display:flex;justify-content:space-between;}
+  .tree-carpeta:hover{background:#f0f1f5;}
+  .tree-cliente{padding:8px 12px 8px 26px;font-size:13px;cursor:pointer;border-radius:8px;color:#374151;}
+  .tree-cliente:hover, .tree-cliente.active{background:#eef0f6;color:var(--navy);font-weight:600;}
+  .count{font-size:11px;color:var(--gray);font-weight:400;}
+
+  .comentario{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .comentario .top{display:flex;justify-content:space-between;font-size:12px;color:var(--gray);margin-bottom:8px;}
+  .comentario .texto{font-size:14px;line-height:1.5;white-space:pre-wrap;}
+  .comentario .media{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .comentario .media img{width:70px;height:70px;object-fit:cover;border-radius:8px;}
+  .comentario audio{margin-top:10px;width:100%;height:32px;}
+  .empty{text-align:center;color:var(--gray);padding:50px;}
+
+  .informe-section{background:var(--card);border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .informe-section h3{color:var(--navy);margin-top:0;font-size:15px;border-bottom:2px solid var(--orange);padding-bottom:8px;}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:12px;font-weight:700;color:var(--gray);}
+  .field input, .field textarea{padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;}
+  .field textarea{min-height:70px;resize:vertical;}
+  .hallazgo-box{border:1.5px dashed var(--border);border-radius:10px;padding:16px;margin-bottom:14px;position:relative;}
+  .hallazgo-box .num{position:absolute;top:-12px;left:14px;background:var(--orange);color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;}
+  .quitar-hallazgo{float:right;background:none;border:none;color:var(--red);font-weight:700;cursor:pointer;font-size:12px;}
+</style>
+</head>
+<body>
+
+<div id="pantallaLogin" style="max-width:380px;margin:80px auto;background:#fff;border-radius:14px;padding:30px;box-shadow:0 2px 10px rgba(0,0,0,.08);text-align:center;">
+  <h2 style="color:var(--navy);margin-top:0;">AURA</h2>
+  <p style="color:var(--gray);font-size:11px;letter-spacing:.5px;text-transform:uppercase;margin-top:-6px;">Auditoría Unificada de Riesgo Asistida</p>
+  <p style="color:var(--gray);font-size:13px;">Acceso restringido — CAFI Tu Casa Financiera</p>
+
+  <div id="vistaLoginNormal">
+    <input type="password" id="claveInput" placeholder="Clave de acceso" style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;text-align:center;margin-bottom:14px;">
+    <button class="btn primary" style="width:100%;padding:12px;" onclick="verificarClave()">Entrar</button>
+    <p id="errorClave" style="color:var(--red);font-size:12px;margin-top:10px;"></p>
+    <p style="margin-top:16px;"><a href="#" style="color:var(--gray);font-size:12px;" onclick="mostrarRecuperacion();return false;">¿Olvidaste tu clave?</a></p>
+  </div>
+
+  <div id="vistaRecuperacionPaso1" style="display:none">
+    <p style="font-size:13px;color:var(--gray);">Te enviaremos un código de 6 dígitos al correo de Google asociado a esta plataforma.</p>
+    <button class="btn orange" style="width:100%;padding:12px;" onclick="solicitarCodigo()">Enviar código a mi correo</button>
+    <p id="mensajeRecuperacion1" style="font-size:12px;margin-top:10px;"></p>
+    <p style="margin-top:14px;"><a href="#" style="color:var(--gray);font-size:12px;" onclick="mostrarLoginNormal();return false;">Volver a iniciar sesión</a></p>
+  </div>
+
+  <div id="vistaRecuperacionPaso2" style="display:none">
+    <p style="font-size:13px;color:var(--gray);">Revisa tu correo y escribe el código (válido 10 minutos):</p>
+    <input type="text" id="codigoInput" placeholder="Código de 6 dígitos" style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;text-align:center;margin-bottom:10px;">
+    <input type="password" id="nuevaClaveInput" placeholder="Nueva clave" style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;text-align:center;margin-bottom:14px;">
+    <button class="btn primary" style="width:100%;padding:12px;" onclick="confirmarCodigo()">Restablecer clave</button>
+    <p id="mensajeRecuperacion2" style="font-size:12px;margin-top:10px;"></p>
+  </div>
+</div>
+
+<div id="plataforma" style="display:none">
+<header>
+  <div>
+    <h1>AURA</h1>
+    <div class="sub">Auditoría Unificada de Riesgo Asistida · Supervisiones de Campo</div>
+  </div>
+  <button class="btn ghost" onclick="cargarDatos()">🔄 Actualizar</button>
+</header>
+
+<div style="background:#fff;border-bottom:1px solid #e5e7eb;padding:10px 24px;display:flex;align-items:center;gap:10px;font-size:13px;">
+  <span style="color:var(--gray);font-weight:600;">🔑 Clave API de Anthropic (solo esta sesión, no se guarda):</span>
+  <input type="password" id="apiKeyInput" placeholder="sk-ant-..." style="flex:1;max-width:400px;padding:7px 10px;">
+  <span id="apiKeyEstado" style="color:var(--gray);font-size:12px;"></span>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="comentarios" onclick="cambiarTab('comentarios')">Comentarios de Campo</div>
+  <div class="tab" data-tab="informe" onclick="cambiarTab('informe')">Informe de Auditoría</div>
+</div>
+
+<main>
+  <!-- ===================== TAB: COMENTARIOS ===================== -->
+  <div id="tabComentarios">
+    <div class="toolbar">
+      <input type="text" id="buscador" placeholder="Buscar por cliente, auditor o texto..." style="flex:1;min-width:200px" oninput="renderComentarios()">
+      <button class="btn orange" onclick="exportarExcel()">⬇️ Exportar a Excel</button>
+    </div>
+    <div class="layout">
+      <div class="panel">
+        <div class="tree" id="arbol"><div class="empty">Cargando...</div></div>
+      </div>
+      <div id="listaComentarios"><div class="empty">Selecciona una carpeta o cliente, o busca arriba.</div></div>
+    </div>
+  </div>
+
+  <!-- ===================== TAB: INFORME ===================== -->
+  <div id="tabInforme" style="display:none">
+    <div class="informe-section">
+      <h3>Datos del Informe</h3>
+      <div class="field-row">
+        <div class="field"><label>N° de informe</label><input type="text" id="infNumero" placeholder="Ej. AI-2026-07"></div>
+        <div class="field"><label>Fecha de emisión</label><input type="text" id="infFecha" placeholder="Ej. 31 de julio de 2026"></div>
+        <div class="field"><label>Período auditado</label><input type="text" id="infPeriodo" placeholder="Ej. Junio - Julio 2026"></div>
+        <div class="field"><label>Área auditada</label><input type="text" id="infArea" placeholder="Ej. Sucursal Motozintla"></div>
+        <div class="field"><label>Auditor responsable</label><input type="text" id="infAuditor" placeholder="Nombre del auditor"></div>
+        <div class="field"><label>Proceso auditado</label><input type="text" id="infProceso" placeholder="Ej. Operaciones de crédito"></div>
+      </div>
+    </div>
+
+    <div class="informe-section">
+      <h3>1. Resumen Ejecutivo</h3>
+      <div class="field" style="margin-bottom:12px"><label>Objetivo</label><textarea id="infObjetivo" placeholder="Evaluar..."></textarea></div>
+      <div class="field" style="margin-bottom:12px"><label>Alcance</label><textarea id="infAlcance" placeholder="La auditoría abarcó..."></textarea></div>
+      <div class="field"><label>Conclusión general</label><textarea id="infConclusionGeneral" placeholder="Como resultado de la revisión..."></textarea></div>
+    </div>
+
+    <div class="informe-section">
+      <h3>2. Hallazgos</h3>
+      <div id="listaHallazgos"></div>
+      <button class="btn ghost" onclick="agregarHallazgo()">+ Agregar hallazgo</button>
+    </div>
+
+    <div class="informe-section">
+      <h3>Firma</h3>
+      <div class="field-row">
+        <div class="field"><label>Nombre</label><input type="text" id="infFirmaNombre" value="C.P. José Manuel Ruiz Araujo"></div>
+        <div class="field"><label>Cargo</label><input type="text" id="infFirmaCargo" value="Gerente de Auditoría Interna"></div>
+      </div>
+    </div>
+
+    <button class="btn primary" style="padding:14px 28px;font-size:15px" onclick="exportarWord()">⬇️ Exportar informe a Word</button>
+  </div>
+</main>
+</div>
+
+<script>
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVtHtFzAMUrF9zv0zCgwN6uFZIZQsHSTD5D0fI7yP56P9G-fGu5d5zchHKr27T3bFTpg/exec";
+const NAVY = "1E2761";
+const ORANGE = "E8561A";
+const LIGHTGRAY = "F0F1F5";
+
+let DATOS = { carpetas: [], clientes: [], comentarios: [] };
+let filtro = { tipo: null, id: null };
+let hallazgoContador = 0;
+let CLAVE = '';
+
+function verificarClave(){
+  const v = document.getElementById('claveInput').value.trim();
+  if(!v){ document.getElementById('errorClave').textContent = 'Escribe la clave.'; return; }
+  CLAVE = v;
+  document.getElementById('pantallaLogin').style.display = 'none';
+  document.getElementById('plataforma').style.display = 'block';
+  cargarDatos();
+}
+
+function mostrarRecuperacion(){
+  document.getElementById('vistaLoginNormal').style.display = 'none';
+  document.getElementById('vistaRecuperacionPaso1').style.display = 'block';
+  document.getElementById('vistaRecuperacionPaso2').style.display = 'none';
+}
+function mostrarLoginNormal(){
+  document.getElementById('vistaLoginNormal').style.display = 'block';
+  document.getElementById('vistaRecuperacionPaso1').style.display = 'none';
+  document.getElementById('vistaRecuperacionPaso2').style.display = 'none';
+}
+
+async function solicitarCodigo(){
+  const msg = document.getElementById('mensajeRecuperacion1');
+  msg.style.color = 'var(--gray)';
+  msg.textContent = 'Enviando...';
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({tipo:'solicitar_recuperacion', data:{}})
+    });
+    const json = await resp.json();
+    if(json.ok){
+      msg.style.color = 'var(--green)';
+      msg.textContent = '✔ Código enviado. Revisa tu correo.';
+      document.getElementById('vistaRecuperacionPaso1').style.display = 'none';
+      document.getElementById('vistaRecuperacionPaso2').style.display = 'block';
+    } else {
+      msg.style.color = 'var(--red)';
+      msg.textContent = 'No se pudo enviar el código.';
+    }
+  }catch(err){
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Sin conexión con el backend.';
+  }
+}
+
+async function confirmarCodigo(){
+  const codigo = document.getElementById('codigoInput').value.trim();
+  const nuevaClave = document.getElementById('nuevaClaveInput').value.trim();
+  const msg = document.getElementById('mensajeRecuperacion2');
+  if(!codigo || !nuevaClave){ msg.style.color='var(--red)'; msg.textContent = 'Completa ambos campos.'; return; }
+  msg.style.color = 'var(--gray)';
+  msg.textContent = 'Verificando...';
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({tipo:'confirmar_recuperacion', data:{codigo, nuevaClave}})
+    });
+    const json = await resp.json();
+    if(json.ok){
+      msg.style.color = 'var(--green)';
+      msg.textContent = '✔ Clave actualizada. Ya puedes entrar con tu nueva clave.';
+      setTimeout(mostrarLoginNormal, 1800);
+    } else {
+      msg.style.color = 'var(--red)';
+      msg.textContent = json.error || 'No se pudo confirmar el código.';
+    }
+  }catch(err){
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Sin conexión con el backend.';
+  }
+}
+
+function cambiarTab(nombre){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===nombre));
+  document.getElementById('tabComentarios').style.display = nombre==='comentarios' ? 'block':'none';
+  document.getElementById('tabInforme').style.display = nombre==='informe' ? 'block':'none';
+}
+
+async function cargarDatos(){
+  document.getElementById('arbol').innerHTML = '<div class="empty">Cargando...</div>';
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?accion=datos&clave=' + encodeURIComponent(CLAVE));
+    const json = await resp.json();
+    if(json.ok){
+      DATOS = json;
+      renderArbol();
+      renderComentarios();
+    } else if(json.error === 'clave incorrecta'){
+      document.getElementById('arbol').innerHTML = '<div class="empty">Clave incorrecta.</div>';
+      alert('Clave incorrecta. Vuelve a intentarlo.');
+      document.getElementById('plataforma').style.display = 'none';
+      document.getElementById('pantallaLogin').style.display = 'block';
+    } else {
+      document.getElementById('arbol').innerHTML = '<div class="empty">Error al cargar datos.</div>';
+    }
+  }catch(err){
+    document.getElementById('arbol').innerHTML = '<div class="empty">Sin conexión con el backend.</div>';
+  }
+}
+
+function renderArbol(){
+  const el = document.getElementById('arbol');
+  if(DATOS.carpetas.length===0){ el.innerHTML = '<div class="empty">Aún no hay carpetas.</div>'; return; }
+  let html = `<div class="tree-carpeta" onclick="filtro={tipo:null,id:null};renderComentarios()"><span>📋 Todos</span></div>`;
+  DATOS.carpetas.forEach(c=>{
+    const clientesDeCarpeta = DATOS.clientes.filter(cl=>cl.carpetaId===c.id);
+    html += `<div class="tree-carpeta" onclick="filtro={tipo:'carpeta',id:'${c.id}'};renderComentarios()">
+      <span>📁 ${escapeHtml(c.nombre)}</span><span class="count">${clientesDeCarpeta.length}</span>
+    </div>`;
+    clientesDeCarpeta.forEach(cl=>{
+      const numComentarios = DATOS.comentarios.filter(co=>co.clienteId===cl.id).length;
+      html += `<div class="tree-cliente" onclick="event.stopPropagation();filtro={tipo:'cliente',id:'${cl.id}'};renderComentarios()">
+        👤 ${escapeHtml(cl.nombre)} <span class="count">(${numComentarios})</span>
+      </div>`;
+    });
+  });
+  el.innerHTML = html;
+}
+
+function renderComentarios(){
+  const el = document.getElementById('listaComentarios');
+  const busqueda = (document.getElementById('buscador').value || '').toLowerCase();
+  let items = DATOS.comentarios.slice();
+
+  if(filtro.tipo === 'carpeta') items = items.filter(c=>c.carpetaId===filtro.id);
+  if(filtro.tipo === 'cliente') items = items.filter(c=>c.clienteId===filtro.id);
+
+  if(busqueda){
+    items = items.filter(c =>
+      (c.texto||'').toLowerCase().includes(busqueda) ||
+      (c.nombreCliente||'').toLowerCase().includes(busqueda) ||
+      (c.auditor||'').toLowerCase().includes(busqueda) ||
+      (c.nombreCarpeta||'').toLowerCase().includes(busqueda)
+    );
+  }
+
+  items.sort((a,b)=> (b.createdAt||'').localeCompare(a.createdAt||''));
+
+  let cabecera = '';
+  if(filtro.tipo === 'cliente' && items.length > 0){
+    cabecera = `<div style="margin-bottom:14px">
+      <button class="btn primary" id="btnGenerarIA" onclick="generarHallazgoConIA('${filtro.id}')">✨ Generar hallazgo con IA a partir de estos comentarios</button>
+    </div>`;
+  }
+
+  if(items.length===0){ el.innerHTML = cabecera + '<div class="empty">Sin comentarios que mostrar.</div>'; return; }
+
+  el.innerHTML = cabecera + items.map(c=>{
+    const fotos = (c.fotosUrls||'').split(',').map(f=>f.trim()).filter(Boolean);
+    const fotosHtml = fotos.map(f=>`<a href="${f}" target="_blank"><img src="${f}"></a>`).join('');
+    const audioHtml = c.audioUrl ? `<audio controls src="${c.audioUrl}"></audio>` : '';
+    return `<div class="comentario">
+      <div class="top">
+        <span><b>${escapeHtml(c.nombreCarpeta||'')}</b> · ${escapeHtml(c.nombreCliente||'')} · ${escapeHtml(c.auditor||'')}</span>
+        <span>${fmtFecha(c.createdAt)}</span>
+      </div>
+      <div class="texto">${escapeHtml(c.texto||'(sin texto)')}</div>
+      <div class="media">${fotosHtml}</div>
+      ${audioHtml}
+    </div>`;
+  }).join('');
+}
+
+function fmtFecha(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  if(isNaN(d)) return iso;
+  return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) + ' ' + d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+}
+function escapeHtml(s){
+  if(!s) return '';
+  return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* ================= EXPORTAR A EXCEL ================= */
+function exportarExcel(){
+  if(DATOS.comentarios.length===0){ alert('No hay comentarios para exportar.'); return; }
+  const filas = DATOS.comentarios.map(c=>({
+    Carpeta: c.nombreCarpeta, Cliente: c.nombreCliente, Auditor: c.auditor,
+    Fecha: fmtFecha(c.createdAt), Comentario: c.texto,
+    Fotos: c.fotosUrls, Audio: c.audioUrl
+  }));
+  const ws = XLSX.utils.json_to_sheet(filas);
+  ws['!cols'] = [{wch:18},{wch:22},{wch:18},{wch:18},{wch:50},{wch:40},{wch:40}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Comentarios");
+  XLSX.writeFile(wb, `Comentarios_Supervisiones_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+/* ================= MÓDULO DE INFORME ================= */
+function agregarHallazgo(datos){
+  hallazgoContador++;
+  const id = hallazgoContador;
+  const d = datos || {};
+  const div = document.createElement('div');
+  div.className = 'hallazgo-box';
+  div.id = 'hallazgo-' + id;
+  div.innerHTML = `
+    <span class="num">Hallazgo ${id}</span>
+    <button class="quitar-hallazgo" onclick="document.getElementById('hallazgo-${id}').remove()">✕ Quitar</button>
+    <div class="field" style="margin-bottom:10px"><label>Título</label><input type="text" class="h-titulo" placeholder="Ej. H-01 Falta de..." value="${escapeAttr(d.titulo)}"></div>
+    <div class="field" style="margin-bottom:10px"><label>Condición</label><textarea class="h-condicion">${escapeHtml(d.condicion)}</textarea></div>
+    <div class="field" style="margin-bottom:10px"><label>Criterio</label><textarea class="h-criterio">${escapeHtml(d.criterio)}</textarea></div>
+    <div class="field" style="margin-bottom:10px"><label>Causa</label><textarea class="h-causa">${escapeHtml(d.causa)}</textarea></div>
+    <div class="field" style="margin-bottom:10px"><label>Efectos / Riesgos (uno por línea)</label><textarea class="h-efectos" placeholder="Daño patrimonial: ...&#10;Problemas legales: ...">${escapeHtml((d.efectos||[]).join('\n'))}</textarea></div>
+    <div class="field" style="margin-bottom:10px"><label>Acción requerida (recomendación)</label><textarea class="h-accion">${escapeHtml(d.accion)}</textarea></div>
+    <div class="field" style="margin-bottom:10px"><label>Elementos mínimos (uno por línea)</label><textarea class="h-elementos" placeholder="Carpeta de evidencias&#10;Resguardos firmados">${escapeHtml((d.elementos||[]).join('\n'))}</textarea></div>
+    <div class="field"><label>Responsable</label><input type="text" class="h-responsable" placeholder="Ej. Gerente de Sucursal" value="${escapeAttr(d.responsable)}"></div>
+  `;
+  document.getElementById('listaHallazgos').appendChild(div);
+  return id;
+}
+agregarHallazgo();
+
+function escapeAttr(s){ return escapeHtml(s||'').replace(/"/g,'&quot;'); }
+
+async function generarHallazgoConIA(clienteId){
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+  if(!apiKey){ alert('Primero escribe tu clave de API de Anthropic arriba.'); return; }
+
+  const cliente = DATOS.clientes.find(c=>c.id===clienteId);
+  const comentariosCliente = DATOS.comentarios.filter(c=>c.clienteId===clienteId);
+  if(comentariosCliente.length===0){ alert('Este cliente no tiene comentarios.'); return; }
+
+  const notas = comentariosCliente.map(c=>`- (${fmtFecha(c.createdAt)}, auditor ${c.auditor}): ${c.texto}`).join('\n');
+
+  const btn = document.getElementById('btnGenerarIA');
+  const textoOriginal = btn.textContent;
+  btn.disabled = true; btn.textContent = '✨ Redactando con IA...';
+
+  const prompt = `Eres un auditor interno senior de una institución de microfinanzas (CAFI). A partir de las siguientes notas de campo tomadas durante una visita de supervisión al cliente "${cliente ? cliente.nombre : ''}", redacta UN hallazgo de auditoría formal y profesional.
+
+Notas de campo del auditor:
+${notas}
+
+Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin markdown, sin backticks, con esta estructura exacta:
+{"titulo":"","condicion":"","criterio":"","causa":"","efectos":["",""],"accion":"","elementos":["",""],"responsable":""}
+
+Donde:
+- titulo: título breve del hallazgo (estilo "H-01 ...")
+- condicion: qué se encontró (basado en las notas)
+- criterio: qué debería cumplirse según normativa/políticas internas razonables de una SOFOM
+- causa: por qué ocurrió
+- efectos: arreglo de 1 a 3 riesgos o efectos concretos
+- accion: recomendación concreta
+- elementos: arreglo de 1 a 3 elementos mínimos de evidencia para el seguimiento
+- responsable: puesto responsable de atender (ej. "Gerente de Sucursal", "Asesor de crédito")`;
+
+  try{
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await resp.json();
+    if(data.error){ throw new Error(data.error.message || 'Error de la API'); }
+    const textoRespuesta = (data.content || []).filter(b=>b.type==='text').map(b=>b.text).join('');
+    const limpio = textoRespuesta.replace(/```json|```/g,'').trim();
+    const hallazgo = JSON.parse(limpio);
+
+    cambiarTab('informe');
+    const nuevoId = agregarHallazgo(hallazgo);
+    document.getElementById('hallazgo-'+nuevoId).scrollIntoView({behavior:'smooth', block:'center'});
+  }catch(err){
+    alert('No se pudo generar el hallazgo: ' + err.message);
+  }finally{
+    btn.disabled = false; btn.textContent = textoOriginal;
+  }
+}
+
+function leerHallazgos(){
+  return Array.from(document.querySelectorAll('.hallazgo-box')).map(box=>({
+    titulo: box.querySelector('.h-titulo').value,
+    condicion: box.querySelector('.h-condicion').value,
+    criterio: box.querySelector('.h-criterio').value,
+    causa: box.querySelector('.h-causa').value,
+    efectos: box.querySelector('.h-efectos').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    accion: box.querySelector('.h-accion').value,
+    elementos: box.querySelector('.h-elementos').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    responsable: box.querySelector('.h-responsable').value
+  }));
+}
+
+/* ================= EXPORTAR INFORME A WORD ================= */
+async function exportarWord(){
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+          WidthType, ShadingType, HeadingLevel, AlignmentType, BorderStyle } = docx;
+
+  const anchoTotal = 9350;
+  const colEtiqueta = 2200;
+  const colValor = anchoTotal - colEtiqueta;
+
+  function celdaEtiqueta(texto){
+    return new TableCell({
+      width:{size:colEtiqueta, type:WidthType.DXA},
+      shading:{fill:LIGHTGRAY, type:ShadingType.CLEAR},
+      children:[new Paragraph({children:[new TextRun({text:texto, bold:true, size:20})]})]
+    });
+  }
+  function celdaValor(texto){
+    return new TableCell({
+      width:{size:colValor, type:WidthType.DXA},
+      children:[new Paragraph({children:[new TextRun({text:texto||'', size:20})]})]
+    });
+  }
+  function filaInfo(etiqueta, valor){
+    return new TableRow({children:[celdaEtiqueta(etiqueta), celdaValor(valor)]});
+  }
+  function celdaEncabezadoAncho(texto){
+    return new TableCell({
+      width:{size:anchoTotal, type:WidthType.DXA},
+      columnSpan:2,
+      shading:{fill:NAVY, type:ShadingType.CLEAR},
+      children:[new Paragraph({children:[new TextRun({text:texto, bold:true, color:"FFFFFF", size:20})]})]
+    });
+  }
+  function filaEncabezadoAncho(texto){
+    return new TableRow({children:[celdaEncabezadoAncho(texto)]});
+  }
+  function celdaTextoAncho(lineas){
+    const parrafos = (Array.isArray(lineas)? lineas : [lineas]).map(l=>
+      new Paragraph({children:[new TextRun({text: (Array.isArray(lineas)? '• '+l : l)||'', size:20})]})
+    );
+    return new TableCell({
+      width:{size:anchoTotal, type:WidthType.DXA},
+      columnSpan:2,
+      children: parrafos.length? parrafos : [new Paragraph({children:[new TextRun({text:'', size:20})]})]
+    });
+  }
+  function filaTextoAncho(lineas){
+    return new TableRow({children:[celdaTextoAncho(lineas)]});
+  }
+
+  const encabezado = new Table({
+    width:{size:anchoTotal, type:WidthType.DXA},
+    columnWidths:[colEtiqueta, colValor],
+    rows:[
+      filaInfo("Período auditado", document.getElementById('infPeriodo').value),
+      filaInfo("Área auditada", document.getElementById('infArea').value),
+      filaInfo("Auditor responsable", document.getElementById('infAuditor').value),
+      filaInfo("Proceso auditado", document.getElementById('infProceso').value),
+      filaInfo("Fecha de emisión", document.getElementById('infFecha').value),
+      filaInfo("N° de informe", document.getElementById('infNumero').value)
+    ]
+  });
+
+  const hijos = [
+    new Paragraph({alignment:AlignmentType.CENTER, spacing:{after:80}, children:[new TextRun({text:"INFORME DE AUDITORÍA INTERNA", bold:true, size:32, color:NAVY})]}),
+    new Paragraph({alignment:AlignmentType.CENTER, spacing:{after:240}, children:[new TextRun({text:"Auditoría Integral de Procesos Administrativos y Operativos", italics:true, size:20, color:ORANGE})]}),
+    encabezado,
+    new Paragraph({spacing:{before:240, after:120}, children:[new TextRun({text:"CONFIDENCIAL — USO INTERNO", bold:true, color:ORANGE, size:20})]}),
+    new Paragraph({spacing:{after:240}, children:[new TextRun({text:"El presente informe ha sido preparado exclusivamente para uso interno de la organización y contiene información de carácter confidencial. Su contenido, total o parcial, no podrá ser divulgado, reproducido, distribuido ni utilizado para ningún propósito distinto al que motivó su elaboración, sin la autorización previa y por escrito del área responsable.", italics:true, size:18})]}),
+    new Paragraph({heading:HeadingLevel.HEADING_1, spacing:{before:200, after:120}, children:[new TextRun({text:"1. RESUMEN EJECUTIVO", color:NAVY})]}),
+    new Paragraph({spacing:{after:60}, children:[new TextRun({text:"Objetivo", bold:true, size:20})]}),
+    new Paragraph({spacing:{after:180}, children:[new TextRun({text:document.getElementById('infObjetivo').value, size:20})]}),
+    new Paragraph({spacing:{after:60}, children:[new TextRun({text:"Alcance", bold:true, size:20})]}),
+    new Paragraph({spacing:{after:180}, children:[new TextRun({text:document.getElementById('infAlcance').value, size:20})]}),
+    new Paragraph({spacing:{after:60}, children:[new TextRun({text:"Conclusión general", bold:true, size:20})]}),
+    new Paragraph({spacing:{after:240}, children:[new TextRun({text:document.getElementById('infConclusionGeneral').value, size:20})]}),
+    new Paragraph({heading:HeadingLevel.HEADING_1, spacing:{before:200, after:160}, children:[new TextRun({text:"2. HALLAZGOS DE AUDITORÍA", color:NAVY})]})
+  ];
+
+  const hallazgos = leerHallazgos();
+  hallazgos.forEach((h, idx)=>{
+    hijos.push(new Paragraph({spacing:{before:200, after:100}, children:[new TextRun({text:`Hallazgo ${idx+1}`, bold:true, size:22, color:ORANGE})]}));
+    hijos.push(new Table({
+      width:{size:anchoTotal, type:WidthType.DXA},
+      columnWidths:[colEtiqueta, colValor],
+      rows:[
+        filaEncabezadoAncho("DESCRIPCIÓN DEL HALLAZGO"),
+        filaInfo("Título", h.titulo),
+        filaInfo("Condición", h.condicion),
+        filaInfo("Criterio", h.criterio),
+        filaInfo("Causa", h.causa),
+        filaEncabezadoAncho("EFECTO / RIESGO"),
+        filaTextoAncho(h.efectos),
+        filaEncabezadoAncho("RECOMENDACIÓN"),
+        filaInfo("Acción requerida", h.accion),
+        filaTextoAncho(h.elementos.map((e,i)=>`${i+1}. ${e}`)),
+        filaInfo("Responsable", h.responsable)
+      ]
+    }));
+  });
+
+  hijos.push(new Paragraph({spacing:{before:400, after:300}, children:[new TextRun({text:"ATENTAMENTE", bold:true, size:20})]}));
+  hijos.push(new Paragraph({spacing:{after:20}, children:[new TextRun({text:document.getElementById('infFirmaNombre').value, bold:true, size:20})]}));
+  hijos.push(new Paragraph({children:[new TextRun({text:document.getElementById('infFirmaCargo').value, size:20})]}));
+
+  const doc = new Document({
+    sections:[{ properties:{ page:{ size:{width:12240, height:15840} } }, children: hijos }]
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Informe_${document.getElementById('infNumero').value || 'CAFI'}.docx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ---------- Init ---------- */
+</script>
+</body>
+</html>

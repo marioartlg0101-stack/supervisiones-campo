@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -95,6 +94,7 @@
     <div class="sub">Auditoría Unificada de Riesgo Asistida · Supervisiones de Campo</div>
   </div>
   <button class="btn ghost" onclick="cargarDatos()">🔄 Actualizar</button>
+  <span id="indicadorEnLinea" style="margin-left:10px;font-size:11px;color:#8fe3a8;transition:opacity .3s;">🟢 En línea</span>
 </header>
 
 <div class="tabs" style="justify-content:space-between;align-items:center;">
@@ -280,6 +280,8 @@ async function cargarDatos(esAutomatico){
   actualizando = true;
   if(!esAutomatico){
     document.getElementById('arbol').innerHTML = '<div class="empty">Cargando...</div>';
+  } else {
+    parpadearIndicador();
   }
   try{
     const resp = await fetch(APPS_SCRIPT_URL + '?accion=datos&clave=' + encodeURIComponent(CLAVE));
@@ -309,6 +311,13 @@ async function cargarDatos(esAutomatico){
   }finally{
     actualizando = false;
   }
+}
+
+function parpadearIndicador(){
+  const el = document.getElementById('indicadorEnLinea');
+  if(!el) return;
+  el.style.opacity = '0.2';
+  setTimeout(()=>{ el.style.opacity = '1'; }, 250);
 }
 
 function renderArbol(){
@@ -359,7 +368,7 @@ function renderComentarios(){
   if(items.length===0){ el.innerHTML = cabecera + '<div class="empty">Sin comentarios que mostrar.</div>'; return; }
 
   el.innerHTML = cabecera + items.map(c=>{
-    const fotos = (c.fotosUrls||'').split(',').map(f=>f.trim()).filter(Boolean);
+    const fotos = (c.fotosUrls||'').split('|||').map(f=>f.trim()).filter(Boolean);
     const fotosHtml = fotos.map(f=>`<a href="${f}" target="_blank"><img src="${f}"></a>`).join('');
     const audioHtml = c.audioUrl ? `<audio controls src="${c.audioUrl}"></audio>` : '';
     return `<div class="comentario">
@@ -391,10 +400,11 @@ function exportarExcel(){
   const filas = DATOS.comentarios.map(c=>({
     Carpeta: c.nombreCarpeta, Cliente: c.nombreCliente, Auditor: c.auditor,
     Fecha: fmtFecha(c.createdAt), Comentario: c.texto,
-    Fotos: c.fotosUrls, Audio: c.audioUrl
+    'Tiene fotos': (c.fotosUrls||'').split('|||').filter(Boolean).length,
+    'Tiene audio': c.audioUrl ? 'Sí' : 'No'
   }));
   const ws = XLSX.utils.json_to_sheet(filas);
-  ws['!cols'] = [{wch:18},{wch:22},{wch:18},{wch:18},{wch:50},{wch:40},{wch:40}];
+  ws['!cols'] = [{wch:18},{wch:22},{wch:18},{wch:18},{wch:50},{wch:12},{wch:12}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Comentarios");
   XLSX.writeFile(wb, `Comentarios_Supervisiones_${new Date().toISOString().slice(0,10)}.xlsx`);

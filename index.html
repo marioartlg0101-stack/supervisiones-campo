@@ -197,11 +197,23 @@ function guardarAuditor(){
   render();
 }
 
+function cambiarNombreAuditor(){
+  const nuevo = prompt('Escribe tu nombre completo:', AUDITOR);
+  if(nuevo === null) return;
+  const limpio = nuevo.trim();
+  if(!limpio){ toast('Escribe un nombre válido'); return; }
+  AUDITOR = limpio;
+  localStorage.setItem('sc_auditor', limpio);
+  toast('Nombre actualizado');
+  render();
+}
+
 /* ---------- Vista: Lista de Carpetas (regiones/plazas) ---------- */
 async function viewCarpetas(){
   const carpetas = (await idbGetAll('carpetas')).filter(c=>c.auditor===AUDITOR).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
   const pend = await contarPendientes();
   let html = headerHTML('Mis Carpetas', AUDITOR, false) + statusBarHTML(pend) + '<main>';
+  html += `<div style="text-align:right;margin-bottom:8px;"><span style="font-size:12px;color:var(--gray);cursor:pointer;" onclick="cambiarNombreAuditor()">✏️ Cambiar nombre</span></div>`;
   if(carpetas.length===0){
     html += `<div class="empty">Aún no tienes carpetas.<br>Crea una para empezar (ej. "Motozintla").</div>`;
   } else {
@@ -231,12 +243,16 @@ function abrirModalCarpeta(){
     </div>
   `);
 }
+let guardandoCarpeta = false;
 async function crearCarpeta(){
+  if(guardandoCarpeta) return;
   const nombre = document.getElementById('mCarpetaNombre').value.trim();
   if(!nombre){ toast('Escribe un nombre'); return; }
+  guardandoCarpeta = true;
   const obj = {id:uid(), nombre, auditor:AUDITOR, createdAt:nowISO(), synced:false};
   await idbPut('carpetas', obj);
   encolarSync('carpeta', obj);
+  guardandoCarpeta = false;
   cerrarModal();
   render();
   intentarSync();
@@ -280,13 +296,17 @@ function abrirModalCliente(carpetaId){
     </div>
   `);
 }
+let guardandoCliente = false;
 async function crearCliente(carpetaId){
+  if(guardandoCliente) return;
   const nombre = document.getElementById('mClienteNombre').value.trim();
   const expediente = document.getElementById('mClienteExp').value.trim();
   if(!nombre){ toast('Escribe el nombre del cliente'); return; }
+  guardandoCliente = true;
   const obj = {id:uid(), carpetaId, nombre, expediente, auditor:AUDITOR, createdAt:nowISO(), synced:false};
   await idbPut('clientes', obj);
   encolarSync('cliente', obj);
+  guardandoCliente = false;
   cerrarModal();
   render();
   intentarSync();
@@ -328,6 +348,7 @@ let fotosTemp = [];
 let audioTemp = null;
 let mediaRecorder = null;
 let audioChunks = [];
+let guardandoComentario = false;
 
 function abrirModalComentario(clienteId){
   fotosTemp = []; audioTemp = null;
@@ -405,14 +426,19 @@ async function toggleGrabacion(){
 }
 
 async function guardarComentario(clienteId){
+  if(guardandoComentario) return;
   const texto = document.getElementById('mComentarioTexto').value.trim();
   if(!texto && fotosTemp.length===0 && !audioTemp){ toast('Agrega texto, foto o audio'); return; }
+  guardandoComentario = true;
+  const btnGuardar = document.querySelector('#modalOverlay .btn.primary');
+  if(btnGuardar){ btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
   const obj = {
     id:uid(), clienteId, texto, fotos:[...fotosTemp], audio:audioTemp,
     auditor:AUDITOR, createdAt:nowISO(), synced:false
   };
   await idbPut('comentarios', obj);
   encolarSync('comentario', obj);
+  guardandoComentario = false;
   cerrarModal();
   render();
   intentarSync();
@@ -484,6 +510,7 @@ function encolarSync(tipo, data){
 }
 function encolarEliminar(tipo, id){
   const q = getQueue();
+  // Si el elemento aún no se había sincronizado (seguía pendiente de crear), ya no hace falta mandarlo
   const filtrada = q.filter(item => !(item.accion==='crear' && item.tipo===tipo && item.id===id));
   filtrada.push({accion:'eliminar', tipo, id, addedAt:nowISO()});
   setQueue(filtrada);
@@ -553,9 +580,10 @@ async function intentarSync(manual){
         if(!(json && json.ok)) restante.push(item);
         continue;
       }
+      // accion 'crear' (o entradas viejas sin campo accion)
       const store = item.tipo==='carpeta'?'carpetas':item.tipo==='cliente'?'clientes':'comentarios';
       const data = await idbGet(store, item.id);
-      if(!data){ continue; }
+      if(!data){ continue; } // ya no existe (se borró antes de sincronizar), se descarta
       if(data.synced){ continue; }
       const resp = await fetch(APPS_SCRIPT_URL, {
         method:'POST',

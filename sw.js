@@ -32,6 +32,11 @@ self.addEventListener('fetch', (event) => {
   if (event.request.url.includes('script.google.com')) {
     return;
   }
+  // AURA (plataforma del gerente) tampoco se cachea aquí — este service worker es solo
+  // para la app de campo (index.html). Así siempre carga la versión más reciente de AURA.
+  if (event.request.url.includes('aura.html')) {
+    return;
+  }
 
   event.respondWith(
     fetch(event.request)

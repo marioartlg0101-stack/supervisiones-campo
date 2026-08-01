@@ -274,6 +274,7 @@ function cambiarTab(nombre){
 }
 
 let actualizando = false;
+let ultimoSnapshot = '';
 async function cargarDatos(esAutomatico){
   if(actualizando) return;
   actualizando = true;
@@ -284,6 +285,12 @@ async function cargarDatos(esAutomatico){
     const resp = await fetch(APPS_SCRIPT_URL + '?accion=datos&clave=' + encodeURIComponent(CLAVE));
     const json = await resp.json();
     if(json.ok){
+      const snapshot = JSON.stringify(json);
+      if(snapshot === ultimoSnapshot){
+        actualizando = false;
+        return; // nada cambió, no volver a dibujar (evita parpadeo)
+      }
+      ultimoSnapshot = snapshot;
       DATOS = json;
       renderArbol();
       renderComentarios();

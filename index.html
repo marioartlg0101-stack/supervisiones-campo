@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Supervisiones de Campo</title>
-  <link rel="manifest" href="./manifest.json">
+<link rel="manifest" href="./manifest.json">
 <style>
   :root{
     --navy:#1E2761;
@@ -43,6 +43,8 @@
   .badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;margin-left:6px;}
   .badge.pend{background:#fff3e0;color:var(--orange);}
   .badge.ok{background:#e7f7ed;color:var(--green);}
+  .del-btn{font-size:16px;padding:4px;cursor:pointer;}
+  .del-btn:active{opacity:.5;}
 
   .fab{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:448px;background:var(--orange);color:#fff;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:700;box-shadow:0 4px 14px rgba(232,86,26,.4);z-index:15;}
   .fab:active{opacity:.85;}
@@ -138,6 +140,12 @@ function idbGet(store, id){
     req.onsuccess=()=>res(req.result); req.onerror=()=>res(null);
   });
 }
+function idbDelete(store, id){
+  return new Promise((res)=>{
+    const req = txStore(store,'readwrite').delete(id);
+    req.onsuccess=()=>res(true); req.onerror=()=>res(false);
+  });
+}
 
 function uid(){ return 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,9); }
 function nowISO(){ return new Date().toISOString(); }
@@ -200,7 +208,10 @@ async function viewCarpetas(){
     carpetas.forEach(c=>{
       html += `<div class="card" onclick="abrirCarpeta('${c.id}')">
         <div><div class="title">${escapeHtml(c.nombre)}</div><div class="meta">${fmtFecha(c.createdAt)}</div></div>
-        <div class="chev">›</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="del-btn" onclick="event.stopPropagation(); eliminarCarpeta('${c.id}')">🗑️</span>
+          <div class="chev">›</div>
+        </div>
       </div>`;
     });
   }
@@ -243,7 +254,10 @@ async function viewClientes(carpetaId){
     clientes.forEach(c=>{
       html += `<div class="card" onclick="abrirCliente('${c.id}')">
         <div><div class="title">${escapeHtml(c.nombre)}</div><div class="meta">${c.expediente? 'Exp. '+escapeHtml(c.expediente)+' · ':''}${fmtFecha(c.createdAt)}</div></div>
-        <div class="chev">›</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="del-btn" onclick="event.stopPropagation(); eliminarCliente('${c.id}')">🗑️</span>
+          <div class="chev">›</div>
+        </div>
       </div>`;
     });
   }
@@ -292,7 +306,10 @@ async function viewComentarios(clienteId){
       html += `<div class="comentario">
         <div class="top">
           <span class="fecha">${fmtFecha(c.createdAt)} · ${escapeHtml(c.auditor)}</span>
-          <span class="badge ${c.synced?'ok':'pend'}">${c.synced?'Sincronizado':'Pendiente'}</span>
+          <span style="display:flex;align-items:center;gap:8px">
+            <span class="badge ${c.synced?'ok':'pend'}">${c.synced?'Sincronizado':'Pendiente'}</span>
+            <span class="del-btn" onclick="eliminarComentario('${c.id}')">🗑️</span>
+          </span>
         </div>
         <div class="texto">${escapeHtml(c.texto)}</div>
         <div class="media">
@@ -462,11 +479,51 @@ function getQueue(){
 function setQueue(q){ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); }
 function encolarSync(tipo, data){
   const q = getQueue();
-  q.push({tipo, id:data.id, addedAt:nowISO()});
+  q.push({accion:'crear', tipo, id:data.id, addedAt:nowISO()});
   setQueue(q);
+}
+function encolarEliminar(tipo, id){
+  const q = getQueue();
+  const filtrada = q.filter(item => !(item.accion==='crear' && item.tipo===tipo && item.id===id));
+  filtrada.push({accion:'eliminar', tipo, id, addedAt:nowISO()});
+  setQueue(filtrada);
 }
 async function contarPendientes(){
   return getQueue().length;
+}
+
+/* ---------- Eliminar con confirmación (y en cascada hacia hijos) ---------- */
+async function eliminarCarpeta(carpetaId){
+  if(!confirm('¿Eliminar esta carpeta? También se borrarán todos sus clientes y comentarios.')) return;
+  const clientes = (await idbGetAll('clientes')).filter(c=>c.carpetaId===carpetaId);
+  for(const cli of clientes){
+    const coms = (await idbGetAll('comentarios')).filter(c=>c.clienteId===cli.id);
+    for(const com of coms) await idbDelete('comentarios', com.id);
+    await idbDelete('clientes', cli.id);
+  }
+  await idbDelete('carpetas', carpetaId);
+  encolarEliminar('carpeta', carpetaId);
+  toast('Carpeta eliminada');
+  render();
+  intentarSync();
+}
+async function eliminarCliente(clienteId){
+  if(!confirm('¿Eliminar este cliente? También se borrarán sus comentarios.')) return;
+  const coms = (await idbGetAll('comentarios')).filter(c=>c.clienteId===clienteId);
+  for(const com of coms) await idbDelete('comentarios', com.id);
+  await idbDelete('clientes', clienteId);
+  encolarEliminar('cliente', clienteId);
+  toast('Cliente eliminado');
+  render();
+  intentarSync();
+}
+async function eliminarComentario(comentarioId){
+  if(!confirm('¿Eliminar este comentario?')) return;
+  await idbDelete('comentarios', comentarioId);
+  encolarEliminar('comentario', comentarioId);
+  toast('Comentario eliminado');
+  render();
+  intentarSync();
 }
 
 let syncing = false;
@@ -486,9 +543,19 @@ async function intentarSync(manual){
   let restante = [];
   for(const item of q){
     try{
+      if(item.accion === 'eliminar'){
+        const resp = await fetch(APPS_SCRIPT_URL, {
+          method:'POST',
+          headers:{'Content-Type':'text/plain'},
+          body: JSON.stringify({tipo:'eliminar_'+item.tipo, data:{id:item.id}})
+        });
+        const json = await resp.json();
+        if(!(json && json.ok)) restante.push(item);
+        continue;
+      }
       const store = item.tipo==='carpeta'?'carpetas':item.tipo==='cliente'?'clientes':'comentarios';
       const data = await idbGet(store, item.id);
-      if(!data){ continue; } // ya no existe, se descarta
+      if(!data){ continue; }
       if(data.synced){ continue; }
       const resp = await fetch(APPS_SCRIPT_URL, {
         method:'POST',
@@ -517,11 +584,13 @@ setInterval(()=>{ if(navigator.onLine) intentarSync(false); }, 15000);
 
 /* ---------- Init ---------- */
 openDB().then(render);
-  if('serviceWorker' in navigator){
-     window.addEventListener('load', ()=>{
-       navigator.serviceWorker.register('./sw.js').catch(err=>console.log('SW error', err));
-     });
-   }
+
+/* ---------- Registro del Service Worker (permite abrir sin internet) ---------- */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js').catch(err=>console.log('SW error', err));
+  });
+}
 </script>
 </body>
 </html>

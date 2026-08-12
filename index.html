@@ -380,6 +380,7 @@ async function viewComentarios(clienteId){
           ${(c.fotos||[]).map(f=>`<img class="thumb" src="${f}">`).join('')}
         </div>
         ${c.audio? `<audio controls src="${c.audio}"></audio>` : ''}
+        ${c.cuestionario? `<div style="margin-top:8px;"><span style="font-size:11px;color:var(--gray);">📋 Cuestionario:</span><br><img class="thumb" style="width:80px;height:80px" src="${c.cuestionario}"></div>` : ''}
       </div>`;
     });
   }
@@ -395,7 +396,7 @@ let audioChunks = [];
 let guardandoComentario = false;
 
 function abrirModalComentario(clienteId){
-  fotosTemp = []; audioTemp = null;
+  fotosTemp = []; audioTemp = null; cuestionarioTemp = null;
   showModal(`
     <h2>Nuevo Comentario</h2>
     <label>Comentario de la entrevista</label>
@@ -410,11 +411,29 @@ function abrirModalComentario(clienteId){
     <button class="btn record" id="btnRecord" style="width:100%" onclick="toggleGrabacion()">🎙️ Grabar audio</button>
     <div id="audioPreview"></div>
 
+    <label>Foto del cuestionario</label>
+    <input type="file" id="mCuestionarioInput" accept="image/*" capture="environment" style="display:none" onchange="agregarFotoCuestionario(event)">
+    <button class="btn ghost" style="width:100%" onclick="document.getElementById('mCuestionarioInput').click()">📋 Subir foto de cuestionario</button>
+    <div id="cuestionarioPreview"></div>
+
     <div class="row">
       <button class="btn ghost" onclick="cerrarModal()">Cancelar</button>
       <button class="btn primary" onclick="guardarComentario('${clienteId}')">Guardar</button>
     </div>
   `);
+}
+
+let cuestionarioTemp = null;
+function agregarFotoCuestionario(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    cuestionarioTemp = e.target.result;
+    document.getElementById('cuestionarioPreview').innerHTML =
+      `<div class="chip"><img class="thumb" style="width:30px;height:30px" src="${cuestionarioTemp}"> Cuestionario listo <span class="x" onclick="cuestionarioTemp=null;document.getElementById('cuestionarioPreview').innerHTML=''">✕</span></div>`;
+  };
+  reader.readAsDataURL(file);
 }
 
 function agregarFotos(event){
@@ -483,7 +502,7 @@ async function guardarComentario(clienteId){
   const carpeta = cliente ? await idbGet('carpetas', cliente.carpetaId) : null;
 
   const obj = {
-    id:uid(), clienteId, texto, fotos:[...fotosTemp], audio:audioTemp,
+    id:uid(), clienteId, texto, fotos:[...fotosTemp], audio:audioTemp, cuestionario:cuestionarioTemp,
     auditor:AUDITOR, createdAt:nowISO(), synced:false,
     nombreCliente: cliente ? cliente.nombre : '',
     carpetaId: cliente ? cliente.carpetaId : '',

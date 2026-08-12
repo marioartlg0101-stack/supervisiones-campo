@@ -160,15 +160,28 @@ function toast(msg){
 }
 
 /* ---------- Estado de sesión ---------- */
-let AUDITOR = localStorage.getItem('sc_auditor') || '';
+let AUDITOR = '';
+let SESION = null; // {username, password, nombreCompleto}
+
+function cargarSesion(){
+  try{ return JSON.parse(localStorage.getItem('sc_sesion') || 'null'); }catch(e){ return null; }
+}
+function guardarSesion(s){ localStorage.setItem('sc_sesion', JSON.stringify(s)); }
+function cerrarSesion(){
+  if(!confirm('¿Cerrar sesión en este dispositivo?')) return;
+  localStorage.removeItem('sc_sesion');
+  SESION = null;
+  AUDITOR = '';
+  render();
+}
 
 /* ---------- Navegación simple (hash-based) ---------- */
 let currentView = {name:'carpetas'};
 
 async function render(){
   const app = document.getElementById('app');
-  if(!AUDITOR){
-    app.innerHTML = viewSetup();
+  if(!SESION){
+    app.innerHTML = viewLogin();
     return;
   }
   if(currentView.name === 'carpetas') app.innerHTML = await viewCarpetas();
@@ -177,35 +190,66 @@ async function render(){
   attachHandlers();
 }
 
-/* ---------- Vista: Setup inicial ---------- */
-function viewSetup(){
+/* ---------- Vista: Inicio de sesión ---------- */
+let iniciandoSesion = false;
+function viewLogin(){
   return `
   <div class="setup">
     <h1>Supervisiones de Campo</h1>
-    <p>Ingresa tu nombre para comenzar. Se guarda solo en este dispositivo.</p>
-    <input type="text" id="inpAuditor" placeholder="Nombre del auditor" style="text-align:center;font-size:16px;padding:14px;"/>
+    <p>Inicia sesión con el usuario que te dio tu gerente de auditoría.</p>
+    <input type="text" id="inpUsuario" placeholder="Usuario" style="text-align:center;font-size:16px;padding:14px;margin-bottom:10px;" autocapitalize="none"/>
+    <input type="password" id="inpPassword" placeholder="Contraseña" style="text-align:center;font-size:16px;padding:14px;"/>
     <div class="row">
-      <button class="btn primary" style="width:100%" onclick="guardarAuditor()">Continuar</button>
+      <button class="btn primary" style="width:100%" onclick="iniciarSesion()">Entrar</button>
     </div>
+    <p id="loginError" style="color:var(--red);font-size:12px;margin-top:10px;"></p>
   </div>`;
 }
-function guardarAuditor(){
-  const v = document.getElementById('inpAuditor').value.trim();
-  if(!v){ toast('Escribe tu nombre'); return; }
-  AUDITOR = v;
-  localStorage.setItem('sc_auditor', v);
-  render();
+
+async function iniciarSesion(){
+  if(iniciandoSesion) return;
+  const username = document.getElementById('inpUsuario').value.trim();
+  const password = document.getElementById('inpPassword').value;
+  const errorEl = document.getElementById('loginError');
+  if(!username || !password){ errorEl.textContent = 'Escribe usuario y contraseña.'; return; }
+  if(!navigator.onLine){ errorEl.textContent = 'Necesitas internet la primera vez que inicias sesión.'; return; }
+  iniciandoSesion = true;
+  errorEl.textContent = 'Entrando...';
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?accion=login&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password));
+    const json = await resp.json();
+    if(json.ok){
+      SESION = {username, password, nombreCompleto: json.nombreCompleto};
+      guardarSesion(SESION);
+      AUDITOR = json.nombreCompleto;
+      errorEl.textContent = 'Recuperando tus datos...';
+      await restaurarDatosDesdeServidor();
+      render();
+    } else {
+      errorEl.textContent = json.error || 'Usuario o contraseña incorrectos.';
+    }
+  }catch(err){
+    errorEl.textContent = 'Sin conexión con el servidor, intenta de nuevo.';
+  }finally{
+    iniciandoSesion = false;
+  }
 }
 
-function cambiarNombreAuditor(){
-  const nuevo = prompt('Escribe tu nombre completo:', AUDITOR);
-  if(nuevo === null) return;
-  const limpio = nuevo.trim();
-  if(!limpio){ toast('Escribe un nombre válido'); return; }
-  AUDITOR = limpio;
-  localStorage.setItem('sc_auditor', limpio);
-  toast('Nombre actualizado');
-  render();
+/* Recupera del servidor las carpetas/clientes/comentarios de este usuario,
+   por si el celular es nuevo o se borró la caché — así nunca se pierde info. */
+async function restaurarDatosDesdeServidor(){
+  if(!SESION || !navigator.onLine) return;
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?accion=misdatos&username=' + encodeURIComponent(SESION.username) + '&password=' + encodeURIComponent(SESION.password));
+    const json = await resp.json();
+    if(json.ok){
+      for(const c of json.carpetas) await idbPut('carpetas', Object.assign({}, c, {synced:true}));
+      for(const c of json.clientes) await idbPut('clientes', Object.assign({}, c, {synced:true}));
+      for(const c of json.comentarios) await idbPut('comentarios', c);
+    }
+  }catch(err){
+    // Si falla, no pasa nada grave: seguimos con lo que ya haya localmente.
+  }
 }
 
 /* ---------- Vista: Lista de Carpetas (regiones/plazas) ---------- */
@@ -213,7 +257,7 @@ async function viewCarpetas(){
   const carpetas = (await idbGetAll('carpetas')).filter(c=>c.auditor===AUDITOR).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
   const pend = await contarPendientes();
   let html = headerHTML('Mis Carpetas', AUDITOR, false) + statusBarHTML(pend) + '<main>';
-  html += `<div style="text-align:right;margin-bottom:8px;"><span style="font-size:12px;color:var(--gray);cursor:pointer;" onclick="cambiarNombreAuditor()">✏️ Cambiar nombre</span></div>`;
+  html += `<div style="text-align:right;margin-bottom:8px;"><span style="font-size:12px;color:var(--gray);cursor:pointer;" onclick="cerrarSesion()">🚪 Cerrar sesión</span></div>`;
   if(carpetas.length===0){
     html += `<div class="empty">Aún no tienes carpetas.<br>Crea una para empezar (ej. "Motozintla").</div>`;
   } else {
@@ -432,9 +476,18 @@ async function guardarComentario(clienteId){
   guardandoComentario = true;
   const btnGuardar = document.querySelector('#modalOverlay .btn.primary');
   if(btnGuardar){ btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
+
+  // Traemos los datos del cliente y su carpeta AQUÍ MISMO (ya los tenemos localmente,
+  // no hace falta esperar a que el backend los busque después).
+  const cliente = await idbGet('clientes', clienteId);
+  const carpeta = cliente ? await idbGet('carpetas', cliente.carpetaId) : null;
+
   const obj = {
     id:uid(), clienteId, texto, fotos:[...fotosTemp], audio:audioTemp,
-    auditor:AUDITOR, createdAt:nowISO(), synced:false
+    auditor:AUDITOR, createdAt:nowISO(), synced:false,
+    nombreCliente: cliente ? cliente.nombre : '',
+    carpetaId: cliente ? cliente.carpetaId : '',
+    nombreCarpeta: carpeta ? carpeta.nombre : ''
   };
   await idbPut('comentarios', obj);
   encolarSync('comentario', obj);
@@ -556,6 +609,7 @@ async function eliminarComentario(comentarioId){
 let syncing = false;
 async function intentarSync(manual){
   if(syncing) return;
+  if(!SESION) return;
   if(!navigator.onLine){
     if(manual) toast('Sin conexión, se sincronizará al recuperar internet');
     return;
@@ -574,7 +628,7 @@ async function intentarSync(manual){
         const resp = await fetch(APPS_SCRIPT_URL, {
           method:'POST',
           headers:{'Content-Type':'text/plain'},
-          body: JSON.stringify({tipo:'eliminar_'+item.tipo, data:{id:item.id}})
+          body: JSON.stringify({tipo:'eliminar_'+item.tipo, data:{id:item.id}, auth:{username:SESION.username, password:SESION.password}})
         });
         const json = await resp.json();
         if(!(json && json.ok)) restante.push(item);
@@ -588,7 +642,7 @@ async function intentarSync(manual){
       const resp = await fetch(APPS_SCRIPT_URL, {
         method:'POST',
         headers:{'Content-Type':'text/plain'},
-        body: JSON.stringify({tipo:item.tipo, data})
+        body: JSON.stringify({tipo:item.tipo, data, auth:{username:SESION.username, password:SESION.password}})
       });
       const json = await resp.json();
       if(json && json.ok){
@@ -611,7 +665,12 @@ window.addEventListener('online', ()=>intentarSync(false));
 setInterval(()=>{ if(navigator.onLine) intentarSync(false); }, 15000);
 
 /* ---------- Init ---------- */
-openDB().then(render);
+openDB().then(async ()=>{
+  SESION = cargarSesion();
+  if(SESION){ AUDITOR = SESION.nombreCompleto; }
+  await render();
+  if(SESION) restaurarDatosDesdeServidor(); // silencioso, refresca por si acaso
+});
 
 /* ---------- Registro del Service Worker (permite abrir sin internet) ---------- */
 if('serviceWorker' in navigator){

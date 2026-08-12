@@ -2,6 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AURA - Supervisiones de Campo</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -395,6 +398,8 @@ function renderComentarios(){
   el.innerHTML = cabecera + items.map(c=>{
     const fotoIds = (c.fotosUrls||'').split(',').map(f=>f.trim()).filter(Boolean);
     const fotosHtml = fotoIds.length>0 ? `<button class="btn ghost btn-ver-foto" onclick="verFotos('${fotoIds.join(',')}')" style="font-size:12px;padding:6px 10px;">📷 Ver foto${fotoIds.length>1 ? 's ('+fotoIds.length+')' : ''}</button>` : '';
+    const cuestionarioId = (c.cuestionarioUrl||'').trim();
+    const cuestionarioHtml = cuestionarioId ? `<button class="btn orange" onclick="verFotos('${cuestionarioId}')" style="font-size:12px;padding:6px 10px;">📋 Cuestionario</button>` : '';
     const audioId = (c.audioUrl||'').trim();
     const audioHtml = audioId ? `<audio controls class="media-audio" data-id="${audioId}"></audio>` : '';
     return `<div class="comentario">
@@ -403,7 +408,7 @@ function renderComentarios(){
         <span>${fmtFecha(c.createdAt)}</span>
       </div>
       <div class="texto">${escapeHtml(c.texto||'(sin texto)')}</div>
-      <div class="media">${fotosHtml}</div>
+      <div class="media">${fotosHtml} ${cuestionarioHtml}</div>
       ${audioHtml}
     </div>`;
   }).join('');

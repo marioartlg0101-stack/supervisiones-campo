@@ -1,8 +1,10 @@
-const CACHE_NAME = 'supervisiones-campo-v1';
+const CACHE_NAME = 'supervisiones-campo-v2';
 const ARCHIVOS_A_GUARDAR = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 // Al instalar, guarda una copia de la app en el celular
@@ -28,12 +30,9 @@ self.addEventListener('activate', (event) => {
 // Estrategia: intenta con internet primero (para tener la versión más nueva),
 // si no hay señal, usa la copia guardada. Así siempre abre, con o sin internet.
 self.addEventListener('fetch', (event) => {
-  // Las llamadas al backend (Apps Script) NUNCA se guardan en caché, siempre van directo
   if (event.request.url.includes('script.google.com')) {
     return;
   }
-  // AURA (plataforma del gerente) tampoco se cachea aquí — este service worker es solo
-  // para la app de campo (index.html). Así siempre carga la versión más reciente de AURA.
   if (event.request.url.includes('aura.html')) {
     return;
   }

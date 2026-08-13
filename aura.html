@@ -181,6 +181,14 @@
       <h3>Usuarios existentes</h3>
       <div id="listaUsuarios"><p style="color:var(--gray);font-size:13px;">Cargando...</p></div>
     </div>
+
+    <div class="informe-section">
+      <h3>🧠 Contexto de la empresa para la IA</h3>
+      <p style="font-size:12px;color:var(--gray);margin-top:-8px;">Escribe aquí todo lo que quieras que la IA siempre tenga en cuenta al analizar hallazgos: políticas internas, terminología propia de CAFI, criterios de riesgo, casos típicos, lo que sea relevante. Se aplica automáticamente en cada análisis, en todos los clientes.</p>
+      <textarea id="contextoEmpresaTexto" placeholder="Ej. CAFI es una institución de microfinanzas especializada en crédito grupal para mujeres. Los pagos siempre deben hacerse a través de Depósito Fácil o ventanilla, nunca en efectivo al asesor. Un hallazgo de riesgo alto siempre implica manejo irregular de dinero..." style="min-height:180px;width:100%;"></textarea>
+      <button class="btn primary" style="margin-top:8px;" onclick="guardarContextoEmpresa()">Guardar contexto</button>
+      <span id="mensajeContexto" style="font-size:12px;margin-left:10px;"></span>
+    </div>
   </div>
 </main>
 </div>
@@ -196,16 +204,22 @@ let DATOS = { carpetas: [], clientes: [], comentarios: [] };
 let filtro = { tipo: null, id: null }; // tipo: 'carpeta' | 'cliente'
 let hallazgoContador = 0;
 let CLAVE = '';
-let API_KEY = '';
+let API_KEY = localStorage.getItem('sc_api_key_ia') || '';
 
 function cambiarClaveIA(){
-  const v = prompt('Clave de API de Anthropic (solo se guarda mientras tengas esta página abierta):', API_KEY || '');
-  if(v !== null && v.trim()){ API_KEY = v.trim(); }
+  const v = prompt('Clave de API de Anthropic (se guarda solo en este navegador, no se comparte con nadie más):', API_KEY || '');
+  if(v !== null && v.trim()){
+    API_KEY = v.trim();
+    localStorage.setItem('sc_api_key_ia', API_KEY);
+  }
 }
 function asegurarClaveIA(){
   if(!API_KEY){
-    const v = prompt('Escribe tu clave de API de Anthropic para poder generar el hallazgo (solo se usará en esta sesión):');
-    if(v && v.trim()) API_KEY = v.trim();
+    const v = prompt('Escribe tu clave de API de Anthropic (se guardará en este navegador para no volver a pedirla):');
+    if(v && v.trim()){
+      API_KEY = v.trim();
+      localStorage.setItem('sc_api_key_ia', API_KEY);
+    }
   }
   return API_KEY;
 }
@@ -298,7 +312,7 @@ function cambiarTab(nombre){
   document.getElementById('tabComentarios').style.display = nombre==='comentarios' ? 'block':'none';
   document.getElementById('tabInforme').style.display = nombre==='informe' ? 'block':'none';
   document.getElementById('tabUsuarios').style.display = nombre==='usuarios' ? 'block':'none';
-  if(nombre==='usuarios') cargarUsuarios();
+  if(nombre==='usuarios'){ cargarUsuarios(); cargarContextoEmpresaEnPantalla(); }
 }
 
 let actualizando = false;
@@ -322,6 +336,7 @@ async function cargarDatos(esAutomatico){
       }
       ultimoSnapshot = snapshot;
       DATOS = json;
+      CONTEXTO_EMPRESA_ACTUAL = json.contextoEmpresa || '';
       renderArbol();
       renderComentarios();
     } else if(json.error === 'clave incorrecta'){
@@ -389,9 +404,7 @@ function renderComentarios(){
   let cabecera = '';
   if(filtro.tipo === 'cliente' && items.length > 0){
     const notaExistente = (DATOS.notas || []).find(n => n.clienteId === filtro.id);
-    cabecera = `<div style="margin-bottom:14px">
-      <button class="btn primary" id="btnGenerarIA" onclick="generarHallazgoConIA('${filtro.id}')">✨ Generar hallazgo con IA a partir de estos comentarios</button>
-    </div>
+    cabecera = `
     <div class="informe-section" style="margin-bottom:16px;">
       <h3>🔍 Hallazgos detectados por IA</h3>
       <p style="font-size:12px;color:var(--gray);margin-top:-8px;">Analiza los comentarios y transcripciones de este cliente. No siempre va a encontrar algo — solo cuando de verdad haya un riesgo u observación.</p>
@@ -642,6 +655,37 @@ function exportarExcel(){
 }
 
 /* ================= GESTIÓN DE USUARIOS ================= */
+/* ================= CONTEXTO DE LA EMPRESA (para que la IA "aprenda" sobre CAFI) ================= */
+let CONTEXTO_EMPRESA_ACTUAL = '';
+
+function cargarContextoEmpresaEnPantalla(){
+  const el = document.getElementById('contextoEmpresaTexto');
+  if(el) el.value = CONTEXTO_EMPRESA_ACTUAL || '';
+}
+
+async function guardarContextoEmpresa(){
+  const texto = document.getElementById('contextoEmpresaTexto').value;
+  const msg = document.getElementById('mensajeContexto');
+  msg.style.color = 'var(--gray)'; msg.textContent = 'Guardando...';
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({tipo:'guardar_contexto', data:{claveGerente:CLAVE, texto}})
+    });
+    const json = await resp.json();
+    if(json.ok){
+      CONTEXTO_EMPRESA_ACTUAL = texto;
+      msg.style.color = 'var(--green)'; msg.textContent = '✔ Guardado. Se usará en todos los análisis a partir de ahora.';
+      setTimeout(()=>{ msg.textContent=''; }, 3000);
+    } else {
+      msg.style.color = 'var(--red)'; msg.textContent = json.error || 'No se pudo guardar.';
+    }
+  }catch(err){
+    msg.style.color = 'var(--red)'; msg.textContent = 'Sin conexión con el backend.';
+  }
+}
+
 async function cargarUsuarios(){
   const el = document.getElementById('listaUsuarios');
   el.innerHTML = '<p style="color:var(--gray);font-size:13px;">Cargando...</p>';
@@ -759,8 +803,12 @@ async function detectarHallazgosCliente(clienteId){
   const textoOriginal = btn.textContent;
   btn.disabled = true; btn.textContent = '🔍 Analizando...';
 
-  const prompt = `Eres un auditor interno senior de una institución de microfinanzas (CAFI). Analiza las siguientes notas de campo (comentarios y transcripciones de audio) de una visita de supervisión al cliente "${cliente ? cliente.nombre : ''}".
+  const contextoExtra = CONTEXTO_EMPRESA_ACTUAL
+    ? `\nContexto importante sobre la empresa (siempre debes tenerlo en cuenta):\n${CONTEXTO_EMPRESA_ACTUAL}\n`
+    : '';
 
+  const prompt = `Eres un auditor interno senior de una institución de microfinanzas (CAFI). Analiza las siguientes notas de campo (comentarios y transcripciones de audio) de una visita de supervisión al cliente "${cliente ? cliente.nombre : ''}".
+${contextoExtra}
 Notas:
 ${notas}
 

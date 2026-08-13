@@ -603,16 +603,17 @@ function getQueue(){
   try{ return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]'); }catch(e){ return []; }
 }
 function setQueue(q){ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); }
+function nuevaLlave(){ return Date.now() + '_' + Math.random().toString(36).slice(2,9); }
 function encolarSync(tipo, data){
   const q = getQueue();
-  q.push({accion:'crear', tipo, id:data.id, addedAt:nowISO()});
+  q.push({key:nuevaLlave(), accion:'crear', tipo, id:data.id, addedAt:nowISO()});
   setQueue(q);
 }
 function encolarEliminar(tipo, id){
   const q = getQueue();
   // Si el elemento aún no se había sincronizado (seguía pendiente de crear), ya no hace falta mandarlo
   const filtrada = q.filter(item => !(item.accion==='crear' && item.tipo===tipo && item.id===id));
-  filtrada.push({accion:'eliminar', tipo, id, addedAt:nowISO()});
+  filtrada.push({key:nuevaLlave(), accion:'eliminar', tipo, id, addedAt:nowISO()});
   setQueue(filtrada);
 }
 async function contarPendientes(){
@@ -668,8 +669,9 @@ async function intentarSync(manual){
   syncing = true;
   const q = getQueue();
   if(q.length===0){ syncing=false; if(manual) toast('Todo sincronizado'); return; }
-  let restante = [];
+  const llavesResueltas = []; // lo que ya se confirmó (éxito, duplicado, o ya no existe localmente)
   for(const item of q){
+    if(!item.key) item.key = nuevaLlave(); // por si quedó algo viejo sin llave
     try{
       if(item.accion === 'eliminar'){
         const resp = await fetch(APPS_SCRIPT_URL, {
@@ -678,14 +680,14 @@ async function intentarSync(manual){
           body: JSON.stringify({tipo:'eliminar_'+item.tipo, data:{id:item.id}, auth:{username:SESION.username, password:SESION.password}})
         });
         const json = await resp.json();
-        if(!(json && json.ok)) restante.push(item);
+        if(json && json.ok) llavesResueltas.push(item.key);
         continue;
       }
       // accion 'crear' (o entradas viejas sin campo accion)
       const store = item.tipo==='carpeta'?'carpetas':item.tipo==='cliente'?'clientes':'comentarios';
       const data = await idbGet(store, item.id);
-      if(!data){ continue; } // ya no existe (se borró antes de sincronizar), se descarta
-      if(data.synced){ continue; }
+      if(!data){ llavesResueltas.push(item.key); continue; } // ya no existe (se borró antes de sincronizar), se descarta
+      if(data.synced){ llavesResueltas.push(item.key); continue; }
       const resp = await fetch(APPS_SCRIPT_URL, {
         method:'POST',
         headers:{'Content-Type':'text/plain'},
@@ -695,16 +697,20 @@ async function intentarSync(manual){
       if(json && json.ok){
         data.synced = true;
         await idbPut(store, data);
-      } else {
-        restante.push(item);
+        llavesResueltas.push(item.key);
       }
+      // si falló, no se agrega a llavesResueltas: se queda pendiente para reintentar
     }catch(err){
-      restante.push(item);
+      // sin conexión momentánea u otro error: se queda pendiente, no se marca como resuelto
     }
   }
-  setQueue(restante);
+  // Fusionamos con la cola ACTUAL (puede tener cosas nuevas agregadas mientras sincronizábamos)
+  // y solo quitamos lo que realmente se confirmó como resuelto — así nunca se pierde nada nuevo.
+  const queueActual = getQueue();
+  const queueFinal = queueActual.filter(item => !llavesResueltas.includes(item.key));
+  setQueue(queueFinal);
   syncing = false;
-  if(manual) toast(restante.length===0? 'Sincronización completa' : `${restante.length} pendiente(s), reintentando...`);
+  if(manual) toast(queueFinal.length===0? 'Sincronización completa' : `${queueFinal.length} pendiente(s), reintentando...`);
   render();
 }
 

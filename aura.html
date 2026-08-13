@@ -481,7 +481,7 @@ const CODIGO_WORKER_TRANSCRIPCION = `
     const { id, audio } = e.data;
     try{
       if(!transcriptor){
-        transcriptor = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base');
+        transcriptor = await pipeline('automatic-speech-recognition', 'Xenova/whisper-small');
       }
       const resultado = await transcriptor(audio, { language: 'spanish', task: 'transcribe' });
       self.postMessage({ id, texto: (resultado.text || '').trim() });

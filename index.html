@@ -2,709 +2,856 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Supervisiones de Campo</title>
-<link rel="manifest" href="./manifest.json">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AURA - Supervisiones de Campo</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/pizzip@3.2.0/dist/pizzip.js"></script>
+<script src="https://unpkg.com/docxtemplater@3.69.0/build/docxtemplater.js"></script>
 <style>
   :root{
-    --navy:#1E2761;
-    --orange:#E8561A;
-    --bg:#f4f5f8;
-    --card:#ffffff;
-    --gray:#6b7280;
-    --green:#1f9d55;
-    --red:#d0342c;
-    --yellow:#e8a51a;
+    --navy:#1E2761; --orange:#E8561A; --bg:#f4f5f8; --card:#ffffff;
+    --gray:#6b7280; --green:#1f9d55; --red:#d0342c; --border:#e5e7eb;
   }
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  *{box-sizing:border-box;}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:#1a1a2e;}
-  #app{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);display:flex;flex-direction:column;}
-
-  header{background:var(--navy);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:20;}
-  header .back{font-size:22px;cursor:pointer;padding:4px 8px;border-radius:8px;}
-  header .back:active{background:rgba(255,255,255,.15);}
-  header h1{font-size:16px;margin:0;font-weight:700;flex:1;line-height:1.2;}
-  header .sub{font-size:11px;opacity:.8;font-weight:400;}
-
-  .statusbar{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:#fff;border-bottom:1px solid #e5e7eb;font-size:12px;position:sticky;top:56px;z-index:19;}
-  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
-  .dot.online{background:var(--green);}
-  .dot.offline{background:var(--red);}
-  .pending-badge{background:var(--orange);color:#fff;border-radius:10px;padding:2px 8px;font-weight:700;font-size:11px;}
-  .sync-btn{border:1px solid var(--navy);color:var(--navy);background:#fff;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;}
-
-  main{flex:1;padding:14px;overflow-y:auto;padding-bottom:90px;}
-
-  .card{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
-  .card:active{background:#f0f1f5;}
-  .card .title{font-weight:700;color:var(--navy);font-size:15px;}
-  .card .meta{font-size:12px;color:var(--gray);margin-top:2px;}
-  .card .chev{color:var(--gray);font-size:18px;}
-  .badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;margin-left:6px;}
-  .badge.pend{background:#fff3e0;color:var(--orange);}
-  .badge.ok{background:#e7f7ed;color:var(--green);}
-  .del-btn{font-size:16px;padding:4px;cursor:pointer;}
-  .del-btn:active{opacity:.5;}
-
-  .fab{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:448px;background:var(--orange);color:#fff;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:700;box-shadow:0 4px 14px rgba(232,86,26,.4);z-index:15;}
-  .fab:active{opacity:.85;}
-
-  .empty{text-align:center;color:var(--gray);padding:60px 20px;font-size:14px;}
-
-  /* Modal / form */
-  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:30;display:flex;align-items:flex-end;justify-content:center;}
-  .modal{background:#fff;width:100%;max-width:480px;border-radius:18px 18px 0 0;padding:20px;max-height:88vh;overflow-y:auto;}
-  .modal h2{color:var(--navy);font-size:17px;margin:0 0 14px;}
-  label{font-size:12px;font-weight:700;color:var(--gray);display:block;margin:12px 0 4px;}
-  input[type=text],textarea{width:100%;padding:11px;border:1.5px solid #e0e2e8;border-radius:10px;font-size:14px;font-family:inherit;background:#fafafa;}
-  textarea{min-height:90px;resize:vertical;}
-  .row{display:flex;gap:10px;margin-top:18px;}
-  .btn{flex:1;padding:13px;border-radius:10px;border:none;font-weight:700;font-size:14px;}
+  header{background:var(--navy);color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;}
+  header h1{font-size:18px;margin:0;}
+  header .sub{font-size:12px;opacity:.8;}
+  .tabs{display:flex;background:#fff;border-bottom:2px solid var(--border);padding:0 24px;}
+  .tab{padding:14px 20px;cursor:pointer;font-weight:600;color:var(--gray);border-bottom:3px solid transparent;}
+  .tab.active{color:var(--navy);border-bottom-color:var(--orange);}
+  main{padding:24px;max-width:1200px;margin:0 auto;}
+  .toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+  input[type=text], select{padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;background:#fff;}
+  .btn{padding:10px 18px;border-radius:8px;border:none;font-weight:700;font-size:13px;cursor:pointer;}
   .btn.primary{background:var(--navy);color:#fff;}
-  .btn.ghost{background:#f0f1f5;color:var(--navy);}
-  .btn.record{background:var(--red);color:#fff;}
-  .btn.record.recording{background:#8a1410;}
+  .btn.orange{background:var(--orange);color:#fff;}
+  .btn.ghost{background:#eef0f6;color:var(--navy);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
 
-  .chip-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
-  .chip{background:#eef0f6;border-radius:9px;padding:6px 10px;font-size:11px;display:flex;align-items:center;gap:6px;}
-  .chip .x{color:var(--red);font-weight:700;cursor:pointer;}
-  .thumb{width:60px;height:60px;border-radius:8px;object-fit:cover;}
+  .layout{display:grid;grid-template-columns:280px 1fr;gap:20px;align-items:start;}
+  .panel{background:var(--card);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .tree{padding:10px;}
+  .tree-carpeta{padding:10px 12px;font-weight:700;color:var(--navy);cursor:pointer;border-radius:8px;display:flex;justify-content:space-between;}
+  .tree-carpeta:hover{background:#f0f1f5;}
+  .tree-cliente{padding:8px 12px 8px 26px;font-size:13px;cursor:pointer;border-radius:8px;color:#374151;}
+  .tree-cliente:hover, .tree-cliente.active{background:#eef0f6;color:var(--navy);font-weight:600;}
+  .count{font-size:11px;color:var(--gray);font-weight:400;}
 
-  .comentario{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
-  .comentario .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
-  .comentario .fecha{font-size:11px;color:var(--gray);}
-  .comentario .texto{font-size:14px;line-height:1.4;white-space:pre-wrap;}
-  .comentario .media{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
-  audio{width:100%;margin-top:8px;height:32px;}
+  .comentario{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .comentario .top{display:flex;justify-content:space-between;font-size:12px;color:var(--gray);margin-bottom:8px;}
+  .comentario .texto{font-size:14px;line-height:1.5;white-space:pre-wrap;}
+  .comentario .media{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .comentario .media img{width:70px;height:70px;object-fit:cover;border-radius:8px;}
+  .comentario audio{margin-top:10px;width:100%;height:32px;}
+  .empty{text-align:center;color:var(--gray);padding:50px;}
 
-  .setup{padding:40px 24px;text-align:center;}
-  .setup h1{color:var(--navy);font-size:20px;}
-  .setup p{color:var(--gray);font-size:13px;margin-bottom:24px;}
-  .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:50;opacity:0;transition:opacity .3s;}
-  .toast.show{opacity:1;}
+  .informe-section{background:var(--card);border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .informe-section h3{color:var(--navy);margin-top:0;font-size:15px;border-bottom:2px solid var(--orange);padding-bottom:8px;}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:12px;font-weight:700;color:var(--gray);}
+  .field input, .field textarea{padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;}
+  .field textarea{min-height:70px;resize:vertical;}
+  .hallazgo-box{border:1.5px dashed var(--border);border-radius:10px;padding:16px;margin-bottom:14px;position:relative;}
+  .hallazgo-box .num{position:absolute;top:-12px;left:14px;background:var(--orange);color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;}
+  .quitar-hallazgo{float:right;background:none;border:none;color:var(--red);font-weight:700;cursor:pointer;font-size:12px;}
 </style>
 </head>
 <body>
-<div id="app"></div>
-<div class="toast" id="toast"></div>
+
+<div id="pantallaLogin" style="max-width:380px;margin:80px auto;background:#fff;border-radius:14px;padding:30px;box-shadow:0 2px 10px rgba(0,0,0,.08);text-align:center;">
+  <h2 style="color:var(--navy);margin-top:0;">AURA</h2>
+  <p style="color:var(--gray);font-size:11px;letter-spacing:.5px;text-transform:uppercase;margin-top:-6px;">Auditoría Unificada de Riesgo Asistida</p>
+  <p style="color:var(--gray);font-size:13px;">Acceso restringido — CAFI Tu Casa Financiera</p>
+
+  <div id="vistaLoginNormal">
+    <input type="password" id="claveInput" placeholder="Clave de acceso" style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;text-align:center;margin-bottom:14px;">
+    <button class="btn primary" style="width:100%;padding:12px;" onclick="verificarClave()">Entrar</button>
+    <p id="errorClave" style="color:var(--red);font-size:12px;margin-top:10px;"></p>
+    <p style="margin-top:16px;"><a href="#" style="color:var(--gray);font-size:12px;" onclick="mostrarRecuperacion();return false;">¿Olvidaste tu clave?</a></p>
+  </div>
+
+  <div id="vistaRecuperacionPaso1" style="display:none">
+    <p style="font-size:13px;color:var(--gray);">Te enviaremos un código de 6 dígitos al correo de Google asociado a esta plataforma.</p>
+    <button class="btn orange" style="width:100%;padding:12px;" onclick="solicitarCodigo()">Enviar código a mi correo</button>
+    <p id="mensajeRecuperacion1" style="font-size:12px;margin-top:10px;"></p>
+    <p style="margin-top:14px;"><a href="#" style="color:var(--gray);font-size:12px;" onclick="mostrarLoginNormal();return false;">Volver a iniciar sesión</a></p>
+  </div>
+
+  <div id="vistaRecuperacionPaso2" style="display:none">
+    <p style="font-size:13px;color:var(--gray);">Revisa tu correo y escribe el código (válido 10 minutos):</p>
+    <input type="text" id="codigoInput" placeholder="Código de 6 dígitos" style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;text-align:center;margin-bottom:10px;">
+    <input type="password" id="nuevaClaveInput" placeholder="Nueva clave" style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;text-align:center;margin-bottom:14px;">
+    <button class="btn primary" style="width:100%;padding:12px;" onclick="confirmarCodigo()">Restablecer clave</button>
+    <p id="mensajeRecuperacion2" style="font-size:12px;margin-top:10px;"></p>
+  </div>
+</div>
+
+<div id="plataforma" style="display:none">
+<header>
+  <div>
+    <h1>AURA</h1>
+    <div class="sub">Auditoría Unificada de Riesgo Asistida · Supervisiones de Campo</div>
+  </div>
+  <button class="btn ghost" onclick="cargarDatos()">🔄 Actualizar</button>
+  <span id="indicadorEnLinea" style="margin-left:10px;font-size:11px;color:#8fe3a8;transition:opacity .3s;">🟢 En línea</span>
+</header>
+
+<div class="tabs" style="justify-content:space-between;align-items:center;">
+  <div style="display:flex;">
+    <div class="tab active" data-tab="comentarios" onclick="cambiarTab('comentarios')">Comentarios de Campo</div>
+    <div class="tab" data-tab="informe" onclick="cambiarTab('informe')">Informe de Auditoría</div>
+    <div class="tab" data-tab="usuarios" onclick="cambiarTab('usuarios')">Usuarios</div>
+  </div>
+  <a href="#" onclick="cambiarClaveIA();return false;" style="color:var(--gray);font-size:12px;padding-right:10px;">🔑 Clave de IA</a>
+</div>
+
+<main>
+  <!-- ===================== TAB: COMENTARIOS ===================== -->
+  <div id="tabComentarios">
+    <div class="toolbar">
+      <input type="text" id="buscador" placeholder="Buscar por cliente, auditor o texto..." style="flex:1;min-width:200px" oninput="renderComentarios()">
+      <button class="btn orange" onclick="exportarExcel()">⬇️ Exportar a Excel</button>
+    </div>
+    <div class="layout">
+      <div class="panel">
+        <div class="tree" id="arbol"><div class="empty">Cargando...</div></div>
+      </div>
+      <div id="listaComentarios"><div class="empty">Selecciona una carpeta o cliente, o busca arriba.</div></div>
+    </div>
+  </div>
+
+  <!-- ===================== TAB: INFORME ===================== -->
+  <div id="tabInforme" style="display:none">
+    <div class="informe-section">
+      <h3>Datos del Informe</h3>
+      <div class="field-row">
+        <div class="field"><label>N° de informe</label><input type="text" id="infNumero" placeholder="Ej. AI-2026-07"></div>
+        <div class="field"><label>Fecha de emisión</label><input type="text" id="infFecha" placeholder="Ej. 31 de julio de 2026"></div>
+        <div class="field"><label>Período auditado</label><input type="text" id="infPeriodo" placeholder="Ej. Junio - Julio 2026"></div>
+        <div class="field"><label>Área auditada</label><input type="text" id="infArea" placeholder="Ej. Sucursal Motozintla"></div>
+        <div class="field"><label>Auditor responsable</label><input type="text" id="infAuditor" placeholder="Nombre del auditor"></div>
+        <div class="field"><label>Proceso auditado</label><input type="text" id="infProceso" placeholder="Ej. Operaciones de crédito"></div>
+      </div>
+    </div>
+
+    <div class="informe-section">
+      <h3>1. Resumen Ejecutivo</h3>
+      <div class="field" style="margin-bottom:12px"><label>Objetivo</label><textarea id="infObjetivo" placeholder="Evaluar..."></textarea></div>
+      <div class="field" style="margin-bottom:12px"><label>Alcance</label><textarea id="infAlcance" placeholder="La auditoría abarcó..."></textarea></div>
+      <div class="field"><label>Conclusión general</label><textarea id="infConclusionGeneral" placeholder="Como resultado de la revisión..."></textarea></div>
+    </div>
+
+    <div class="informe-section">
+      <h3>2. Hallazgos</h3>
+      <div id="listaHallazgos"></div>
+      <button class="btn ghost" onclick="agregarHallazgo()">+ Agregar hallazgo</button>
+    </div>
+
+    <div class="informe-section">
+      <h3>Firma</h3>
+      <div class="field-row">
+        <div class="field"><label>Nombre</label><input type="text" id="infFirmaNombre" value="C.P. José Manuel Ruiz Araujo"></div>
+        <div class="field"><label>Cargo</label><input type="text" id="infFirmaCargo" value="Gerente de Auditoría Interna"></div>
+      </div>
+    </div>
+
+    <button class="btn primary" style="padding:14px 28px;font-size:15px" onclick="exportarWord()">⬇️ Exportar informe a Word</button>
+  </div>
+
+  <!-- ===================== TAB: USUARIOS ===================== -->
+  <div id="tabUsuarios" style="display:none">
+    <div class="informe-section">
+      <h3>Crear nuevo usuario (auditor)</h3>
+      <p style="font-size:12px;color:var(--gray);margin-top:-8px;">Solo los usuarios que crees aquí podrán iniciar sesión y subir información desde la app de campo.</p>
+      <div class="field-row">
+        <div class="field"><label>Nombre completo</label><input type="text" id="nuevoUsuarioNombre" placeholder="Ej. Mario Arturo López Gómez"></div>
+        <div class="field"><label>Usuario</label><input type="text" id="nuevoUsuarioUsername" placeholder="Ej. mario.lopez" autocapitalize="none"></div>
+        <div class="field"><label>Contraseña</label><input type="text" id="nuevoUsuarioPassword" placeholder="Contraseña temporal"></div>
+      </div>
+      <button class="btn primary" onclick="crearUsuario()">+ Crear usuario</button>
+      <p id="mensajeUsuario" style="font-size:12px;margin-top:10px;"></p>
+    </div>
+
+    <div class="informe-section">
+      <h3>Usuarios existentes</h3>
+      <div id="listaUsuarios"><p style="color:var(--gray);font-size:13px;">Cargando...</p></div>
+    </div>
+  </div>
+</main>
+</div>
 
 <script>
-/* =========================================================
-   SUPERVISIONES DE CAMPO — App offline-first para auditores
-   Almacenamiento: IndexedDB
-   Sincroniza a: Google Sheets + Drive vía Apps Script
-   ========================================================= */
-
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVtHtFzAMUrF9zv0zCgwN6uFZIZQsHSTD5D0fI7yP56P9G-fGu5d5zchHKr27T3bFTpg/exec";
+const NAVY = "1E2761";
+const ORANGE = "E8561A";
+const LIGHTGRAY = "F0F1F5";
 
-const DB_NAME = "supervisiones_campo_db";
-const DB_VERSION = 1;
-let db;
 
-function openDB(){
-  return new Promise((resolve,reject)=>{
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = (e)=>{
-      const d = e.target.result;
-      if(!d.objectStoreNames.contains('carpetas')) d.createObjectStore('carpetas',{keyPath:'id'});
-      if(!d.objectStoreNames.contains('clientes')) d.createObjectStore('clientes',{keyPath:'id'});
-      if(!d.objectStoreNames.contains('comentarios')) d.createObjectStore('comentarios',{keyPath:'id'});
-    };
-    req.onsuccess = (e)=>{ db = e.target.result; resolve(db); };
-    req.onerror = (e)=> reject(e);
-  });
-}
+let DATOS = { carpetas: [], clientes: [], comentarios: [] };
+let filtro = { tipo: null, id: null }; // tipo: 'carpeta' | 'cliente'
+let hallazgoContador = 0;
+let CLAVE = '';
+let API_KEY = '';
 
-function txStore(name, mode='readonly'){
-  return db.transaction(name, mode).objectStore(name);
+function cambiarClaveIA(){
+  const v = prompt('Clave de API de Anthropic (solo se guarda mientras tengas esta página abierta):', API_KEY || '');
+  if(v !== null && v.trim()){ API_KEY = v.trim(); }
 }
-function idbGetAll(store){
-  return new Promise((res)=>{
-    const out=[]; const req = txStore(store).openCursor();
-    req.onsuccess = e=>{
-      const cur = e.target.result;
-      if(cur){ out.push(cur.value); cur.continue(); } else res(out);
-    };
-    req.onerror = ()=>res(out);
-  });
-}
-function idbPut(store, obj){
-  return new Promise((res,rej)=>{
-    const req = txStore(store,'readwrite').put(obj);
-    req.onsuccess=()=>res(obj); req.onerror=(e)=>rej(e);
-  });
-}
-function idbGet(store, id){
-  return new Promise((res)=>{
-    const req = txStore(store).get(id);
-    req.onsuccess=()=>res(req.result); req.onerror=()=>res(null);
-  });
-}
-function idbDelete(store, id){
-  return new Promise((res)=>{
-    const req = txStore(store,'readwrite').delete(id);
-    req.onsuccess=()=>res(true); req.onerror=()=>res(false);
-  });
-}
-
-function uid(){ return 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,9); }
-function nowISO(){ return new Date().toISOString(); }
-function fmtFecha(iso){
-  const d = new Date(iso);
-  return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) + ' ' + d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
-}
-function toast(msg){
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2200);
-}
-
-/* ---------- Estado de sesión ---------- */
-let AUDITOR = '';
-let SESION = null; // {username, password, nombreCompleto}
-
-function cargarSesion(){
-  try{ return JSON.parse(localStorage.getItem('sc_sesion') || 'null'); }catch(e){ return null; }
-}
-function guardarSesion(s){ localStorage.setItem('sc_sesion', JSON.stringify(s)); }
-function cerrarSesion(){
-  if(!confirm('¿Cerrar sesión en este dispositivo?')) return;
-  localStorage.removeItem('sc_sesion');
-  SESION = null;
-  AUDITOR = '';
-  render();
-}
-
-/* ---------- Navegación simple (hash-based) ---------- */
-let currentView = {name:'carpetas'};
-
-async function render(){
-  const app = document.getElementById('app');
-  if(!SESION){
-    app.innerHTML = viewLogin();
-    return;
+function asegurarClaveIA(){
+  if(!API_KEY){
+    const v = prompt('Escribe tu clave de API de Anthropic para poder generar el hallazgo (solo se usará en esta sesión):');
+    if(v && v.trim()) API_KEY = v.trim();
   }
-  if(currentView.name === 'carpetas') app.innerHTML = await viewCarpetas();
-  else if(currentView.name === 'clientes') app.innerHTML = await viewClientes(currentView.carpetaId);
-  else if(currentView.name === 'comentarios') app.innerHTML = await viewComentarios(currentView.clienteId);
-  attachHandlers();
+  return API_KEY;
 }
 
-/* ---------- Vista: Inicio de sesión ---------- */
-let iniciandoSesion = false;
-function viewLogin(){
-  return `
-  <div class="setup">
-    <h1>Supervisiones de Campo</h1>
-    <p>Inicia sesión con el usuario que te dio tu gerente de auditoría.</p>
-    <input type="text" id="inpUsuario" placeholder="Usuario" style="text-align:center;font-size:16px;padding:14px;margin-bottom:10px;" autocapitalize="none"/>
-    <input type="password" id="inpPassword" placeholder="Contraseña" style="text-align:center;font-size:16px;padding:14px;"/>
-    <div class="row">
-      <button class="btn primary" style="width:100%" onclick="iniciarSesion()">Entrar</button>
-    </div>
-    <p id="loginError" style="color:var(--red);font-size:12px;margin-top:10px;"></p>
-  </div>`;
+function verificarClave(){
+  const v = document.getElementById('claveInput').value.trim();
+  if(!v){ document.getElementById('errorClave').textContent = 'Escribe la clave.'; return; }
+  CLAVE = v;
+  document.getElementById('pantallaLogin').style.display = 'none';
+  document.getElementById('plataforma').style.display = 'block';
+  cargarDatos();
+  iniciarAutoActualizacion();
 }
 
-async function iniciarSesion(){
-  if(iniciandoSesion) return;
-  const username = document.getElementById('inpUsuario').value.trim();
-  const password = document.getElementById('inpPassword').value;
-  const errorEl = document.getElementById('loginError');
-  if(!username || !password){ errorEl.textContent = 'Escribe usuario y contraseña.'; return; }
-  if(!navigator.onLine){ errorEl.textContent = 'Necesitas internet la primera vez que inicias sesión.'; return; }
-  iniciandoSesion = true;
-  errorEl.textContent = 'Entrando...';
+let intervaloAuto = null;
+function iniciarAutoActualizacion(){
+  if(intervaloAuto) return;
+  intervaloAuto = setInterval(()=>{
+    if(CLAVE) cargarDatos(true);
+  }, 3000);
+}
+
+function mostrarRecuperacion(){
+  document.getElementById('vistaLoginNormal').style.display = 'none';
+  document.getElementById('vistaRecuperacionPaso1').style.display = 'block';
+  document.getElementById('vistaRecuperacionPaso2').style.display = 'none';
+}
+function mostrarLoginNormal(){
+  document.getElementById('vistaLoginNormal').style.display = 'block';
+  document.getElementById('vistaRecuperacionPaso1').style.display = 'none';
+  document.getElementById('vistaRecuperacionPaso2').style.display = 'none';
+}
+
+async function solicitarCodigo(){
+  const msg = document.getElementById('mensajeRecuperacion1');
+  msg.style.color = 'var(--gray)';
+  msg.textContent = 'Enviando...';
   try{
-    const resp = await fetch(APPS_SCRIPT_URL + '?accion=login&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password));
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({tipo:'solicitar_recuperacion', data:{}})
+    });
     const json = await resp.json();
     if(json.ok){
-      SESION = {username, password, nombreCompleto: json.nombreCompleto};
-      guardarSesion(SESION);
-      AUDITOR = json.nombreCompleto;
-      errorEl.textContent = 'Recuperando tus datos...';
-      await restaurarDatosDesdeServidor();
-      render();
+      msg.style.color = 'var(--green)';
+      msg.textContent = '✔ Código enviado. Revisa tu correo.';
+      document.getElementById('vistaRecuperacionPaso1').style.display = 'none';
+      document.getElementById('vistaRecuperacionPaso2').style.display = 'block';
     } else {
-      errorEl.textContent = json.error || 'Usuario o contraseña incorrectos.';
+      msg.style.color = 'var(--red)';
+      msg.textContent = 'No se pudo enviar el código.';
     }
   }catch(err){
-    errorEl.textContent = 'Sin conexión con el servidor, intenta de nuevo.';
-  }finally{
-    iniciandoSesion = false;
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Sin conexión con el backend.';
   }
 }
 
-/* Recupera del servidor las carpetas/clientes/comentarios de este usuario,
-   por si el celular es nuevo o se borró la caché — así nunca se pierde info. */
-async function restaurarDatosDesdeServidor(){
-  if(!SESION || !navigator.onLine) return;
+async function confirmarCodigo(){
+  const codigo = document.getElementById('codigoInput').value.trim();
+  const nuevaClave = document.getElementById('nuevaClaveInput').value.trim();
+  const msg = document.getElementById('mensajeRecuperacion2');
+  if(!codigo || !nuevaClave){ msg.style.color='var(--red)'; msg.textContent = 'Completa ambos campos.'; return; }
+  msg.style.color = 'var(--gray)';
+  msg.textContent = 'Verificando...';
   try{
-    const resp = await fetch(APPS_SCRIPT_URL + '?accion=misdatos&username=' + encodeURIComponent(SESION.username) + '&password=' + encodeURIComponent(SESION.password));
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({tipo:'confirmar_recuperacion', data:{codigo, nuevaClave}})
+    });
     const json = await resp.json();
     if(json.ok){
-      for(const c of json.carpetas) await idbPut('carpetas', Object.assign({}, c, {synced:true}));
-      for(const c of json.clientes) await idbPut('clientes', Object.assign({}, c, {synced:true}));
-      for(const c of json.comentarios) await idbPut('comentarios', c);
+      msg.style.color = 'var(--green)';
+      msg.textContent = '✔ Clave actualizada. Ya puedes entrar con tu nueva clave.';
+      setTimeout(mostrarLoginNormal, 1800);
+    } else {
+      msg.style.color = 'var(--red)';
+      msg.textContent = json.error || 'No se pudo confirmar el código.';
     }
   }catch(err){
-    // Si falla, no pasa nada grave: seguimos con lo que ya haya localmente.
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Sin conexión con el backend.';
   }
 }
 
-/* ---------- Vista: Lista de Carpetas (regiones/plazas) ---------- */
-async function viewCarpetas(){
-  const carpetas = (await idbGetAll('carpetas')).filter(c=>c.auditor===AUDITOR).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
-  const pend = await contarPendientes();
-  let html = headerHTML('Mis Carpetas', AUDITOR, false) + statusBarHTML(pend) + '<main>';
-  html += `<div style="text-align:right;margin-bottom:8px;"><span style="font-size:12px;color:var(--gray);cursor:pointer;" onclick="cerrarSesion()">🚪 Cerrar sesión</span></div>`;
-  if(carpetas.length===0){
-    html += `<div class="empty">Aún no tienes carpetas.<br>Crea una para empezar (ej. "Motozintla").</div>`;
+function cambiarTab(nombre){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===nombre));
+  document.getElementById('tabComentarios').style.display = nombre==='comentarios' ? 'block':'none';
+  document.getElementById('tabInforme').style.display = nombre==='informe' ? 'block':'none';
+  document.getElementById('tabUsuarios').style.display = nombre==='usuarios' ? 'block':'none';
+  if(nombre==='usuarios') cargarUsuarios();
+}
+
+let actualizando = false;
+let ultimoSnapshot = '';
+async function cargarDatos(esAutomatico){
+  if(actualizando) return;
+  actualizando = true;
+  if(!esAutomatico){
+    document.getElementById('arbol').innerHTML = '<div class="empty">Cargando...</div>';
   } else {
-    carpetas.forEach(c=>{
-      html += `<div class="card" onclick="abrirCarpeta('${c.id}')">
-        <div><div class="title">${escapeHtml(c.nombre)}</div><div class="meta">${fmtFecha(c.createdAt)}</div></div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span class="del-btn" onclick="event.stopPropagation(); eliminarCarpeta('${c.id}')">🗑️</span>
-          <div class="chev">›</div>
-        </div>
+    parpadearIndicador();
+  }
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?accion=datos&clave=' + encodeURIComponent(CLAVE));
+    const json = await resp.json();
+    if(json.ok){
+      const snapshot = JSON.stringify(json);
+      if(snapshot === ultimoSnapshot && esAutomatico){
+        actualizando = false;
+        return; // solo nos saltamos el redibujado en las revisiones automáticas silenciosas
+      }
+      ultimoSnapshot = snapshot;
+      DATOS = json;
+      renderArbol();
+      renderComentarios();
+    } else if(json.error === 'clave incorrecta'){
+      document.getElementById('arbol').innerHTML = '<div class="empty">Clave incorrecta.</div>';
+      alert('Clave incorrecta. Vuelve a intentarlo.');
+      document.getElementById('plataforma').style.display = 'none';
+      document.getElementById('pantallaLogin').style.display = 'block';
+    } else if(!esAutomatico){
+      document.getElementById('arbol').innerHTML = '<div class="empty">Error al cargar datos.</div>';
+    }
+  }catch(err){
+    if(!esAutomatico){
+      document.getElementById('arbol').innerHTML = '<div class="empty">Sin conexión con el backend.</div>';
+    }
+  }finally{
+    actualizando = false;
+  }
+}
+
+function parpadearIndicador(){
+  const el = document.getElementById('indicadorEnLinea');
+  if(!el) return;
+  el.style.opacity = '0.2';
+  setTimeout(()=>{ el.style.opacity = '1'; }, 250);
+}
+
+function renderArbol(){
+  const el = document.getElementById('arbol');
+  if(DATOS.carpetas.length===0){ el.innerHTML = '<div class="empty">Aún no hay carpetas.</div>'; return; }
+  let html = `<div class="tree-carpeta" onclick="filtro={tipo:null,id:null};renderComentarios()"><span>📋 Todos</span></div>`;
+  DATOS.carpetas.forEach(c=>{
+    const clientesDeCarpeta = DATOS.clientes.filter(cl=>cl.carpetaId===c.id);
+    html += `<div class="tree-carpeta" onclick="filtro={tipo:'carpeta',id:'${c.id}'};renderComentarios()">
+      <span>📁 ${escapeHtml(c.nombre)}</span><span class="count">${clientesDeCarpeta.length}</span>
+    </div>`;
+    clientesDeCarpeta.forEach(cl=>{
+      const numComentarios = DATOS.comentarios.filter(co=>co.clienteId===cl.id).length;
+      html += `<div class="tree-cliente" onclick="event.stopPropagation();filtro={tipo:'cliente',id:'${cl.id}'};renderComentarios()">
+        👤 ${escapeHtml(cl.nombre)} <span class="count">(${numComentarios})</span>
       </div>`;
     });
+  });
+  el.innerHTML = html;
+}
+
+function renderComentarios(){
+  const el = document.getElementById('listaComentarios');
+  const busqueda = (document.getElementById('buscador').value || '').toLowerCase();
+  let items = DATOS.comentarios.slice();
+
+  if(filtro.tipo === 'carpeta') items = items.filter(c=>c.carpetaId===filtro.id);
+  if(filtro.tipo === 'cliente') items = items.filter(c=>c.clienteId===filtro.id);
+
+  if(busqueda){
+    items = items.filter(c =>
+      (c.texto||'').toLowerCase().includes(busqueda) ||
+      (c.nombreCliente||'').toLowerCase().includes(busqueda) ||
+      (c.auditor||'').toLowerCase().includes(busqueda) ||
+      (c.nombreCarpeta||'').toLowerCase().includes(busqueda)
+    );
   }
-  html += '</main>' + fabHTML('+ Nueva Carpeta','abrirModalCarpeta()');
-  return html;
-}
-function abrirCarpeta(id){ currentView = {name:'clientes', carpetaId:id}; render(); }
 
-function abrirModalCarpeta(){
-  showModal(`
-    <h2>Nueva Carpeta</h2>
-    <label>Nombre (región / plaza)</label>
-    <input type="text" id="mCarpetaNombre" placeholder="Ej. Motozintla">
-    <div class="row">
-      <button class="btn ghost" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn primary" onclick="crearCarpeta()">Guardar</button>
-    </div>
-  `);
-}
-let guardandoCarpeta = false;
-async function crearCarpeta(){
-  if(guardandoCarpeta) return;
-  const nombre = document.getElementById('mCarpetaNombre').value.trim();
-  if(!nombre){ toast('Escribe un nombre'); return; }
-  guardandoCarpeta = true;
-  const obj = {id:uid(), nombre, auditor:AUDITOR, createdAt:nowISO(), synced:false};
-  await idbPut('carpetas', obj);
-  encolarSync('carpeta', obj);
-  guardandoCarpeta = false;
-  cerrarModal();
-  render();
-  intentarSync();
+  items.sort((a,b)=> (b.createdAt||'').localeCompare(a.createdAt||''));
+
+  let cabecera = '';
+  if(filtro.tipo === 'cliente' && items.length > 0){
+    cabecera = `<div style="margin-bottom:14px">
+      <button class="btn primary" id="btnGenerarIA" onclick="generarHallazgoConIA('${filtro.id}')">✨ Generar hallazgo con IA a partir de estos comentarios</button>
+    </div>`;
+  }
+
+  if(items.length===0){ el.innerHTML = cabecera + '<div class="empty">Sin comentarios que mostrar.</div>'; return; }
+
+  el.innerHTML = cabecera + items.map(c=>{
+    const fotoIds = (c.fotosUrls||'').split(',').map(f=>f.trim()).filter(Boolean);
+    const fotosHtml = fotoIds.length>0 ? `<button class="btn ghost btn-ver-foto" onclick="verFotos('${fotoIds.join(',')}')" style="font-size:12px;padding:6px 10px;">📷 Ver foto${fotoIds.length>1 ? 's ('+fotoIds.length+')' : ''}</button>` : '';
+    const cuestionarioId = (c.cuestionarioUrl||'').trim();
+    const cuestionarioHtml = cuestionarioId ? `<button class="btn orange" onclick="verFotos('${cuestionarioId}')" style="font-size:12px;padding:6px 10px;">📋 Cuestionario</button>` : '';
+    const audioId = (c.audioUrl||'').trim();
+    const audioHtml = audioId ? `
+      <audio controls class="media-audio" data-id="${audioId}"></audio>
+      <div class="transcripcion" data-audio-id="${audioId}" style="font-size:13px;color:#374151;margin-top:8px;font-style:italic;background:#f7f7fa;padding:8px 10px;border-radius:8px;">⏳ Transcribiendo audio...</div>
+    ` : '';
+    return `<div class="comentario">
+      <div class="top">
+        <span><b>${escapeHtml(c.nombreCarpeta||'')}</b> · ${escapeHtml(c.nombreCliente||'')} · ${escapeHtml(c.auditor||'')}</span>
+        <span>${fmtFecha(c.createdAt)}</span>
+      </div>
+      <div class="texto">${escapeHtml(c.texto||'(sin texto)')}</div>
+      <div class="media">${fotosHtml} ${cuestionarioHtml}</div>
+      ${audioHtml}
+    </div>`;
+  }).join('');
+
+  cargarAudioVisible();
 }
 
-/* ---------- Vista: Lista de Clientes dentro de una carpeta ---------- */
-async function viewClientes(carpetaId){
-  const carpeta = await idbGet('carpetas', carpetaId);
-  const clientes = (await idbGetAll('clientes')).filter(c=>c.carpetaId===carpetaId).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
-  const pend = await contarPendientes();
-  let html = headerHTML(carpeta ? carpeta.nombre : 'Clientes', 'Clientes', true) + statusBarHTML(pend) + '<main>';
-  if(clientes.length===0){
-    html += `<div class="empty">Sin clientes todavía en esta carpeta.</div>`;
+const mediaCache = {};
+
+async function verFotos(idsCsv){
+  const ids = idsCsv.split(',').map(s=>s.trim()).filter(Boolean);
+  const idsFaltantes = ids.filter(id=>!mediaCache[id]);
+  if(idsFaltantes.length>0){
+    try{
+      const resp = await fetch(APPS_SCRIPT_URL + '?accion=media&clave=' + encodeURIComponent(CLAVE) + '&ids=' + encodeURIComponent(idsFaltantes.join(',')));
+      const json = await resp.json();
+      if(json.ok) Object.assign(mediaCache, json.archivos);
+    }catch(err){ alert('No se pudieron cargar las fotos.'); return; }
+  }
+  const imgsHtml = ids.map(id => mediaCache[id]
+    ? `<img src="${mediaCache[id]}" style="max-width:100%;display:block;margin:0 auto 20px;">`
+    : `<p style="color:#fff;text-align:center;">(No se pudo cargar una foto)</p>`
+  ).join('');
+  const ventana = window.open('', '_blank');
+  ventana.document.write(`<title>Fotos</title><body style="margin:0;background:#111;padding:20px;">${imgsHtml}</body>`);
+}
+
+function aplicarAudio(el){
+  const id = el.dataset.id;
+  if(!mediaCache[id]) return;
+  el.src = mediaCache[id];
+  el.load();
+}
+async function cargarAudioVisible(){
+  const elementos = Array.from(document.querySelectorAll('audio[data-id]'));
+  const idsFaltantes = [...new Set(elementos.map(e=>e.dataset.id).filter(id=>id && !mediaCache[id]))];
+  if(idsFaltantes.length===0){
+    elementos.forEach(aplicarAudio);
   } else {
-    clientes.forEach(c=>{
-      html += `<div class="card" onclick="abrirCliente('${c.id}')">
-        <div><div class="title">${escapeHtml(c.nombre)}</div><div class="meta">${c.expediente? 'Exp. '+escapeHtml(c.expediente)+' · ':''}${fmtFecha(c.createdAt)}</div></div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span class="del-btn" onclick="event.stopPropagation(); eliminarCliente('${c.id}')">🗑️</span>
-          <div class="chev">›</div>
-        </div>
-      </div>`;
-    });
+    try{
+      const resp = await fetch(APPS_SCRIPT_URL + '?accion=media&clave=' + encodeURIComponent(CLAVE) + '&ids=' + encodeURIComponent(idsFaltantes.join(',')));
+      const json = await resp.json();
+      if(json.ok){
+        Object.assign(mediaCache, json.archivos);
+        elementos.forEach(aplicarAudio);
+      }
+    }catch(err){
+      // si falla, se queda el reproductor vacío, no rompe la pantalla
+    }
   }
-  html += '</main>' + fabHTML('+ Nuevo Cliente', `abrirModalCliente('${carpetaId}')`);
-  return html;
-}
-function abrirCliente(id){ currentView = {name:'comentarios', clienteId:id}; render(); }
-function volverACarpetas(){ currentView = {name:'carpetas'}; render(); }
-
-function abrirModalCliente(carpetaId){
-  showModal(`
-    <h2>Nuevo Cliente</h2>
-    <label>Nombre del cliente</label>
-    <input type="text" id="mClienteNombre" placeholder="Nombre completo">
-    <label>No. de expediente (opcional)</label>
-    <input type="text" id="mClienteExp" placeholder="Ej. AI-2026-...">
-    <div class="row">
-      <button class="btn ghost" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn primary" onclick="crearCliente('${carpetaId}')">Guardar</button>
-    </div>
-  `);
-}
-let guardandoCliente = false;
-async function crearCliente(carpetaId){
-  if(guardandoCliente) return;
-  const nombre = document.getElementById('mClienteNombre').value.trim();
-  const expediente = document.getElementById('mClienteExp').value.trim();
-  if(!nombre){ toast('Escribe el nombre del cliente'); return; }
-  guardandoCliente = true;
-  const obj = {id:uid(), carpetaId, nombre, expediente, auditor:AUDITOR, createdAt:nowISO(), synced:false};
-  await idbPut('clientes', obj);
-  encolarSync('cliente', obj);
-  guardandoCliente = false;
-  cerrarModal();
-  render();
-  intentarSync();
-}
-
-/* ---------- Vista: Comentarios de un cliente ---------- */
-async function viewComentarios(clienteId){
-  const cliente = await idbGet('clientes', clienteId);
-  const comentarios = (await idbGetAll('comentarios')).filter(c=>c.clienteId===clienteId).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
-  const pend = await contarPendientes();
-  let html = headerHTML(cliente?cliente.nombre:'Cliente','Comentarios', true, ()=>{}) + statusBarHTML(pend) + '<main>';
-  html = html.replace('__BACKFN__','volverAClientes(\''+(cliente?cliente.carpetaId:'')+'\')');
-  if(comentarios.length===0){
-    html += `<div class="empty">Sin comentarios aún para este cliente.</div>`;
-  } else {
-    comentarios.forEach(c=>{
-      html += `<div class="comentario">
-        <div class="top">
-          <span class="fecha">${fmtFecha(c.createdAt)} · ${escapeHtml(c.auditor)}</span>
-          <span style="display:flex;align-items:center;gap:8px">
-            <span class="badge ${c.synced?'ok':'pend'}">${c.synced?'Sincronizado':'Pendiente'}</span>
-            <span class="del-btn" onclick="eliminarComentario('${c.id}')">🗑️</span>
-          </span>
-        </div>
-        <div class="texto">${escapeHtml(c.texto)}</div>
-        <div class="media">
-          ${(c.fotos||[]).map(f=>`<img class="thumb" src="${f}">`).join('')}
-        </div>
-        ${c.audio? `<audio controls src="${c.audio}"></audio>` : ''}
-        ${c.cuestionario? `<div style="margin-top:8px;"><span style="font-size:11px;color:var(--gray);">📋 Cuestionario:</span><br><img class="thumb" style="width:80px;height:80px" src="${c.cuestionario}"></div>` : ''}
-      </div>`;
-    });
-  }
-  html += '</main>' + fabHTML('+ Nuevo Comentario', `abrirModalComentario('${clienteId}')`);
-  return html;
-}
-function volverAClientes(carpetaId){ currentView = {name:'clientes', carpetaId}; render(); }
-
-let fotosTemp = [];
-let audioTemp = null;
-let mediaRecorder = null;
-let audioChunks = [];
-let guardandoComentario = false;
-
-function abrirModalComentario(clienteId){
-  fotosTemp = []; audioTemp = null; cuestionarioTemp = null;
-  showModal(`
-    <h2>Nuevo Comentario</h2>
-    <label>Comentario de la entrevista</label>
-    <textarea id="mComentarioTexto" placeholder="Escribe lo observado en la visita..."></textarea>
-
-    <label>Fotos</label>
-    <input type="file" id="mFotoInput" accept="image/*" multiple style="display:none" onchange="agregarFotos(event)">
-    <button class="btn ghost" style="width:100%" onclick="document.getElementById('mFotoInput').click()">📷 Agregar foto(s)</button>
-    <div class="chip-row" id="fotosPreview"></div>
-
-    <label>Audio</label>
-    <button class="btn record" id="btnRecord" style="width:100%" onclick="toggleGrabacion()">🎙️ Grabar audio</button>
-    <div id="audioPreview"></div>
-
-    <label>Foto del cuestionario</label>
-    <input type="file" id="mCuestionarioInput" accept="image/*" capture="environment" style="display:none" onchange="agregarFotoCuestionario(event)">
-    <button class="btn ghost" style="width:100%" onclick="document.getElementById('mCuestionarioInput').click()">📋 Subir foto de cuestionario</button>
-    <div id="cuestionarioPreview"></div>
-
-    <div class="row">
-      <button class="btn ghost" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn primary" onclick="guardarComentario('${clienteId}')">Guardar</button>
-    </div>
-  `);
-}
-
-let cuestionarioTemp = null;
-function agregarFotoCuestionario(event){
-  const file = event.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e=>{
-    cuestionarioTemp = e.target.result;
-    document.getElementById('cuestionarioPreview').innerHTML =
-      `<div class="chip"><img class="thumb" style="width:30px;height:30px" src="${cuestionarioTemp}"> Cuestionario listo <span class="x" onclick="cuestionarioTemp=null;document.getElementById('cuestionarioPreview').innerHTML=''">✕</span></div>`;
-  };
-  reader.readAsDataURL(file);
-}
-
-function agregarFotos(event){
-  const files = Array.from(event.target.files);
-  let pendCount = files.length;
-  files.forEach(file=>{
-    const reader = new FileReader();
-    reader.onload = e=>{
-      fotosTemp.push(e.target.result);
-      renderFotosPreview();
-    };
-    reader.readAsDataURL(file);
+  // Dispara la transcripción de fondo para cada audio visible (sin bloquear la pantalla)
+  document.querySelectorAll('.transcripcion[data-audio-id]').forEach(div=>{
+    if(transcripcionCache[div.dataset.audioId]){
+      div.textContent = transcripcionCache[div.dataset.audioId] ? ('📝 ' + transcripcionCache[div.dataset.audioId]) : '(no se pudo transcribir este audio)';
+    } else {
+      encolarTranscripcion(div.dataset.audioId);
+    }
   });
 }
-function renderFotosPreview(){
-  const el = document.getElementById('fotosPreview');
-  if(!el) return;
-  el.innerHTML = fotosTemp.map((f,i)=>`
-    <div class="chip"><img class="thumb" style="width:30px;height:30px" src="${f}"> <span class="x" onclick="quitarFoto(${i})">✕</span></div>
-  `).join('');
-}
-function quitarFoto(i){ fotosTemp.splice(i,1); renderFotosPreview(); }
 
-async function toggleGrabacion(){
-  const btn = document.getElementById('btnRecord');
-  if(!mediaRecorder || mediaRecorder.state === 'inactive'){
+/* ================= TRANSCRIPCIÓN DE AUDIO (Whisper local, en un Web Worker aparte, uno a la vez) ================= */
+const CODIGO_WORKER_TRANSCRIPCION = `
+  import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+  env.allowLocalModels = false;
+  let transcriptor = null;
+  self.onmessage = async (e) => {
+    const { id, audio } = e.data;
     try{
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1,
-          sampleRate: 44100
-        }
+      if(!transcriptor){
+        transcriptor = await pipeline('automatic-speech-recognition', 'Xenova/whisper-medium');
+      }
+      const resultado = await transcriptor(audio, {
+        language: 'spanish',
+        task: 'transcribe',
+        chunk_length_s: 30,
+        stride_length_s: 5
       });
-      mediaRecorder = new MediaRecorder(stream, { audioBitsPerSecond: 128000 });
-      audioChunks = [];
-      mediaRecorder.ondataavailable = e=> audioChunks.push(e.data);
-      mediaRecorder.onstop = ()=>{
-        const blob = new Blob(audioChunks, {type:'audio/webm'});
-        const reader = new FileReader();
-        reader.onload = e=>{
-          audioTemp = e.target.result;
-          document.getElementById('audioPreview').innerHTML = `<audio controls src="${audioTemp}" style="margin-top:8px"></audio>`;
-        };
-        reader.readAsDataURL(blob);
-        stream.getTracks().forEach(t=>t.stop());
-      };
-      mediaRecorder.start();
-      btn.textContent = '⏹️ Detener grabación';
-      btn.classList.add('recording');
+      self.postMessage({ id, texto: (resultado.text || '').trim() });
     }catch(err){
-      toast('No se pudo acceder al micrófono');
+      self.postMessage({ id, error: err.message });
     }
-  } else {
-    mediaRecorder.stop();
-    btn.textContent = '🎙️ Grabar audio';
-    btn.classList.remove('recording');
+  };
+`;
+let workerTranscripcion = null;
+const callbacksPendientes = {}; // id -> {resolve, reject}
+function obtenerWorkerTranscripcion(){
+  if(!workerTranscripcion){
+    const blob = new Blob([CODIGO_WORKER_TRANSCRIPCION], {type:'text/javascript'});
+    workerTranscripcion = new Worker(URL.createObjectURL(blob), {type:'module'});
+    workerTranscripcion.onmessage = (e)=>{
+      const { id, texto, error } = e.data;
+      const cb = callbacksPendientes[id];
+      if(cb){
+        if(error) cb.reject(new Error(error));
+        else cb.resolve(texto);
+        delete callbacksPendientes[id];
+      }
+    };
+  }
+  return workerTranscripcion;
+}
+
+async function audioDataUrlAFloat32(dataUrl){
+  const resp = await fetch(dataUrl);
+  const arrayBuffer = await resp.arrayBuffer();
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const audioCtx = new AudioCtx();
+  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+  const TARGET_RATE = 16000;
+  const offlineCtx = new OfflineAudioContext(1, Math.ceil(audioBuffer.duration * TARGET_RATE), TARGET_RATE);
+  const source = offlineCtx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(offlineCtx.destination);
+  source.start();
+  const rendered = await offlineCtx.startRendering();
+  return rendered.getChannelData(0);
+}
+
+const transcripcionCache = {}; // id -> texto (para no repetir trabajo)
+let colaTranscripcion = [];    // fila de ids pendientes, se procesan de uno en uno
+let procesandoCola = false;
+
+function encolarTranscripcion(id){
+  if(transcripcionCache[id]) return;
+  if(colaTranscripcion.includes(id)) return;
+  colaTranscripcion.push(id);
+  procesarColaTranscripcion();
+}
+
+async function procesarColaTranscripcion(){
+  if(procesandoCola) return;
+  procesandoCola = true;
+  while(colaTranscripcion.length > 0){
+    const id = colaTranscripcion.shift();
+    if(transcripcionCache[id]) continue;
+    await transcribirUno(id);
+  }
+  procesandoCola = false;
+}
+
+async function transcribirUno(id){
+  try{
+    if(!mediaCache[id]){
+      const resp = await fetch(APPS_SCRIPT_URL + '?accion=media&clave=' + encodeURIComponent(CLAVE) + '&ids=' + encodeURIComponent(id));
+      const json = await resp.json();
+      if(json.ok) Object.assign(mediaCache, json.archivos);
+    }
+    if(!mediaCache[id]) throw new Error('audio no disponible');
+
+    const floatArray = await audioDataUrlAFloat32(mediaCache[id]);
+    const worker = obtenerWorkerTranscripcion();
+    const texto = await new Promise((resolve, reject)=>{
+      callbacksPendientes[id] = {resolve, reject};
+      worker.postMessage({ id, audio: floatArray });
+    });
+
+    transcripcionCache[id] = texto || '(no se detectó voz)';
+  }catch(err){
+    transcripcionCache[id] = null; // marca de error, no se reintenta solo
+  }
+  const divVigente = document.querySelector(`.transcripcion[data-audio-id="${id}"]`);
+  if(divVigente){
+    divVigente.textContent = transcripcionCache[id] ? ('📝 ' + transcripcionCache[id]) : '(no se pudo transcribir este audio)';
   }
 }
 
-async function guardarComentario(clienteId){
-  if(guardandoComentario) return;
-  const texto = document.getElementById('mComentarioTexto').value.trim();
-  if(!texto && fotosTemp.length===0 && !audioTemp){ toast('Agrega texto, foto o audio'); return; }
-  guardandoComentario = true;
-  const btnGuardar = document.querySelector('#modalOverlay .btn.primary');
-  if(btnGuardar){ btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
-
-  // Traemos los datos del cliente y su carpeta AQUÍ MISMO (ya los tenemos localmente,
-  // no hace falta esperar a que el backend los busque después).
-  const cliente = await idbGet('clientes', clienteId);
-  const carpeta = cliente ? await idbGet('carpetas', cliente.carpetaId) : null;
-
-  const obj = {
-    id:uid(), clienteId, texto, fotos:[...fotosTemp], audio:audioTemp, cuestionario:cuestionarioTemp,
-    auditor:AUDITOR, createdAt:nowISO(), synced:false,
-    nombreCliente: cliente ? cliente.nombre : '',
-    carpetaId: cliente ? cliente.carpetaId : '',
-    nombreCarpeta: carpeta ? carpeta.nombre : ''
-  };
-  await idbPut('comentarios', obj);
-  encolarSync('comentario', obj);
-  guardandoComentario = false;
-  cerrarModal();
-  render();
-  intentarSync();
-}
-
-/* ---------- Componentes de UI reutilizables ---------- */
-function headerHTML(title, sub, showBack){
-  return `<header>
-    ${showBack? `<div class="back" onclick="history.back ? null : null; ${title? '': ''}" id="btnBack">←</div>`:''}
-    <div><h1>${escapeHtml(title)}</h1><div class="sub">${escapeHtml(sub)}</div></div>
-  </header>`;
-}
-function statusBarHTML(pend){
-  const online = navigator.onLine;
-  return `<div class="statusbar">
-    <span><span class="dot ${online?'online':'offline'}"></span>${online?'En línea':'Sin conexión'}</span>
-    <span>${pend>0? `<span class="pending-badge">${pend} pendiente(s)</span>` : '<span style="color:#1f9d55">Todo sincronizado</span>'}</span>
-    <button class="sync-btn" onclick="intentarSync(true)">Sincronizar</button>
-  </div>`;
-}
-function fabHTML(label, onclick){
-  return `<button class="fab" onclick="${onclick}">${label}</button>`;
-}
-function showModal(innerHtml){
-  const overlay = document.createElement('div');
-  overlay.className='modal-overlay';
-  overlay.id='modalOverlay';
-  overlay.innerHTML = `<div class="modal">${innerHtml}</div>`;
-  document.body.appendChild(overlay);
-}
-function cerrarModal(){
-  const o = document.getElementById('modalOverlay');
-  if(o) o.remove();
+function fmtFecha(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  if(isNaN(d)) return iso;
+  return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) + ' ' + d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
 }
 function escapeHtml(s){
   if(!s) return '';
-  return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
-/* Fix back button handlers after render (delegation via data since inline onclick uses closures) */
-function attachHandlers(){
-  const back = document.getElementById('btnBack');
-  if(back){
-    back.onclick = ()=>{
-      if(currentView.name==='clientes') volverACarpetas();
-      else if(currentView.name==='comentarios'){
-        idbGet('clientes', currentView.clienteId).then(cli=>{
-          currentView = {name:'clientes', carpetaId: cli? cli.carpetaId : null};
-          render();
-        });
-      }
-    };
+/* ================= EXPORTAR A EXCEL ================= */
+function exportarExcel(){
+  if(DATOS.comentarios.length===0){ alert('No hay comentarios para exportar.'); return; }
+  const filas = DATOS.comentarios.map(c=>({
+    Carpeta: c.nombreCarpeta, Cliente: c.nombreCliente, Auditor: c.auditor,
+    Fecha: fmtFecha(c.createdAt), Comentario: c.texto,
+    'Tiene fotos': (c.fotosUrls||'').split(',').filter(Boolean).length,
+    'Tiene audio': c.audioUrl ? 'Sí' : 'No'
+  }));
+  const ws = XLSX.utils.json_to_sheet(filas);
+  ws['!cols'] = [{wch:18},{wch:22},{wch:18},{wch:18},{wch:50},{wch:12},{wch:12}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Comentarios");
+  XLSX.writeFile(wb, `Comentarios_Supervisiones_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+/* ================= GESTIÓN DE USUARIOS ================= */
+async function cargarUsuarios(){
+  const el = document.getElementById('listaUsuarios');
+  el.innerHTML = '<p style="color:var(--gray);font-size:13px;">Cargando...</p>';
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL + '?accion=usuarios&clave=' + encodeURIComponent(CLAVE));
+    const json = await resp.json();
+    if(!json.ok){ el.innerHTML = '<p style="color:var(--red);font-size:13px;">No se pudo cargar la lista.</p>'; return; }
+    if(json.usuarios.length===0){ el.innerHTML = '<p style="color:var(--gray);font-size:13px;">Aún no has creado ningún usuario.</p>'; return; }
+    el.innerHTML = json.usuarios.map(u => `
+      <div class="card" style="cursor:default;">
+        <div>
+          <div class="title" style="color:var(--navy);font-weight:700;">${escapeHtml(u.nombreCompleto)}</div>
+          <div class="meta">Usuario: ${escapeHtml(u.username)} · ${u.activo==='NO' ? '<span style="color:var(--red)">Inactivo</span>' : 'Activo'}</div>
+        </div>
+        <span class="del-btn" onclick="eliminarUsuario('${escapeAttr(u.username)}')" title="Eliminar usuario">🗑️</span>
+      </div>
+    `).join('');
+  }catch(err){
+    el.innerHTML = '<p style="color:var(--red);font-size:13px;">Sin conexión con el backend.</p>';
   }
 }
 
-/* =========================================================
-   SINCRONIZACIÓN
-   ========================================================= */
-const SYNC_QUEUE_KEY = 'sc_sync_queue';
-
-function getQueue(){
-  try{ return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]'); }catch(e){ return []; }
-}
-function setQueue(q){ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); }
-function encolarSync(tipo, data){
-  const q = getQueue();
-  q.push({accion:'crear', tipo, id:data.id, addedAt:nowISO()});
-  setQueue(q);
-}
-function encolarEliminar(tipo, id){
-  const q = getQueue();
-  // Si el elemento aún no se había sincronizado (seguía pendiente de crear), ya no hace falta mandarlo
-  const filtrada = q.filter(item => !(item.accion==='crear' && item.tipo===tipo && item.id===id));
-  filtrada.push({accion:'eliminar', tipo, id, addedAt:nowISO()});
-  setQueue(filtrada);
-}
-async function contarPendientes(){
-  return getQueue().length;
-}
-
-/* ---------- Eliminar con confirmación (y en cascada hacia hijos) ---------- */
-async function eliminarCarpeta(carpetaId){
-  if(!confirm('¿Eliminar esta carpeta? También se borrarán todos sus clientes y comentarios.')) return;
-  const clientes = (await idbGetAll('clientes')).filter(c=>c.carpetaId===carpetaId);
-  for(const cli of clientes){
-    const coms = (await idbGetAll('comentarios')).filter(c=>c.clienteId===cli.id);
-    for(const com of coms) await idbDelete('comentarios', com.id);
-    await idbDelete('clientes', cli.id);
-  }
-  await idbDelete('carpetas', carpetaId);
-  encolarEliminar('carpeta', carpetaId);
-  toast('Carpeta eliminada');
-  render();
-  intentarSync();
-}
-async function eliminarCliente(clienteId){
-  if(!confirm('¿Eliminar este cliente? También se borrarán sus comentarios.')) return;
-  const coms = (await idbGetAll('comentarios')).filter(c=>c.clienteId===clienteId);
-  for(const com of coms) await idbDelete('comentarios', com.id);
-  await idbDelete('clientes', clienteId);
-  encolarEliminar('cliente', clienteId);
-  toast('Cliente eliminado');
-  render();
-  intentarSync();
-}
-async function eliminarComentario(comentarioId){
-  if(!confirm('¿Eliminar este comentario?')) return;
-  await idbDelete('comentarios', comentarioId);
-  encolarEliminar('comentario', comentarioId);
-  toast('Comentario eliminado');
-  render();
-  intentarSync();
-}
-
-let syncing = false;
-async function intentarSync(manual){
-  if(syncing) return;
-  if(!SESION) return;
-  if(!navigator.onLine){
-    if(manual) toast('Sin conexión, se sincronizará al recuperar internet');
-    return;
-  }
-  if(APPS_SCRIPT_URL.includes('PEGA_AQUI')){
-    if(manual) toast('Falta configurar la URL del backend (Apps Script)');
-    return;
-  }
-  syncing = true;
-  const q = getQueue();
-  if(q.length===0){ syncing=false; if(manual) toast('Todo sincronizado'); return; }
-  let restante = [];
-  for(const item of q){
-    try{
-      if(item.accion === 'eliminar'){
-        const resp = await fetch(APPS_SCRIPT_URL, {
-          method:'POST',
-          headers:{'Content-Type':'text/plain'},
-          body: JSON.stringify({tipo:'eliminar_'+item.tipo, data:{id:item.id}, auth:{username:SESION.username, password:SESION.password}})
-        });
-        const json = await resp.json();
-        if(!(json && json.ok)) restante.push(item);
-        continue;
-      }
-      // accion 'crear' (o entradas viejas sin campo accion)
-      const store = item.tipo==='carpeta'?'carpetas':item.tipo==='cliente'?'clientes':'comentarios';
-      const data = await idbGet(store, item.id);
-      if(!data){ continue; } // ya no existe (se borró antes de sincronizar), se descarta
-      if(data.synced){ continue; }
-      const resp = await fetch(APPS_SCRIPT_URL, {
-        method:'POST',
-        headers:{'Content-Type':'text/plain'},
-        body: JSON.stringify({tipo:item.tipo, data, auth:{username:SESION.username, password:SESION.password}})
-      });
-      const json = await resp.json();
-      if(json && json.ok){
-        data.synced = true;
-        await idbPut(store, data);
-      } else {
-        restante.push(item);
-      }
-    }catch(err){
-      restante.push(item);
+async function crearUsuario(){
+  const nombreCompleto = document.getElementById('nuevoUsuarioNombre').value.trim();
+  const username = document.getElementById('nuevoUsuarioUsername').value.trim();
+  const password = document.getElementById('nuevoUsuarioPassword').value.trim();
+  const msg = document.getElementById('mensajeUsuario');
+  if(!nombreCompleto || !username || !password){ msg.style.color='var(--red)'; msg.textContent='Completa los 3 campos.'; return; }
+  msg.style.color = 'var(--gray)'; msg.textContent = 'Creando...';
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({tipo:'crear_usuario', data:{claveGerente:CLAVE, nombreCompleto, username, password}})
+    });
+    const json = await resp.json();
+    if(json.ok){
+      msg.style.color = 'var(--green)'; msg.textContent = '✔ Usuario creado. Ya puede iniciar sesión en la app de campo.';
+      document.getElementById('nuevoUsuarioNombre').value = '';
+      document.getElementById('nuevoUsuarioUsername').value = '';
+      document.getElementById('nuevoUsuarioPassword').value = '';
+      cargarUsuarios();
+    } else {
+      msg.style.color = 'var(--red)'; msg.textContent = json.error || 'No se pudo crear el usuario.';
     }
+  }catch(err){
+    msg.style.color = 'var(--red)'; msg.textContent = 'Sin conexión con el backend.';
   }
-  setQueue(restante);
-  syncing = false;
-  if(manual) toast(restante.length===0? 'Sincronización completa' : `${restante.length} pendiente(s), reintentando...`);
-  render();
 }
 
-window.addEventListener('online', ()=>intentarSync(false));
-setInterval(()=>{ if(navigator.onLine) intentarSync(false); }, 15000);
+async function eliminarUsuario(username){
+  if(!confirm(`¿Eliminar al usuario "${username}"? Ya no podrá iniciar sesión en la app de campo (sus datos ya sincronizados se conservan).`)) return;
+  try{
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({tipo:'eliminar_usuario', data:{claveGerente:CLAVE, username}})
+    });
+    const json = await resp.json();
+    if(json.ok) cargarUsuarios();
+    else alert(json.error || 'No se pudo eliminar.');
+  }catch(err){
+    alert('Sin conexión con el backend.');
+  }
+}
+
+/* ================= MÓDULO DE INFORME ================= */
+function agregarHallazgo(datos){
+  hallazgoContador++;
+  const id = hallazgoContador;
+  const d = datos || {};
+  const div = document.createElement('div');
+  div.className = 'hallazgo-box';
+  div.id = 'hallazgo-' + id;
+  div.innerHTML = `
+    <span class="num">Hallazgo ${id}</span>
+    <button class="quitar-hallazgo" onclick="document.getElementById('hallazgo-${id}').remove()">✕ Quitar</button>
+    <div class="field" style="margin-bottom:10px"><label>Título</label><input type="text" class="h-titulo" placeholder="Ej. H-01 Falta de..." value="${escapeAttr(d.titulo)}"></div>
+    <div class="field" style="margin-bottom:10px"><label>Condición</label><textarea class="h-condicion">${escapeHtml(d.condicion)}</textarea></div>
+    <div class="field" style="margin-bottom:10px"><label>Criterio</label><textarea class="h-criterio">${escapeHtml(d.criterio)}</textarea></div>
+    <div class="field" style="margin-bottom:10px"><label>Causa</label><textarea class="h-causa">${escapeHtml(d.causa)}</textarea></div>
+    <div class="field" style="margin-bottom:10px"><label>Efectos / Riesgos (uno por línea)</label><textarea class="h-efectos" placeholder="Daño patrimonial: ...&#10;Problemas legales: ...">${escapeHtml((d.efectos||[]).join('\n'))}</textarea></div>
+    <div class="field" style="margin-bottom:10px"><label>Acción requerida (recomendación)</label><textarea class="h-accion">${escapeHtml(d.accion)}</textarea></div>
+    <div class="field" style="margin-bottom:10px"><label>Elementos mínimos (uno por línea)</label><textarea class="h-elementos" placeholder="Carpeta de evidencias&#10;Resguardos firmados">${escapeHtml((d.elementos||[]).join('\n'))}</textarea></div>
+    <div class="field"><label>Responsable</label><input type="text" class="h-responsable" placeholder="Ej. Gerente de Sucursal" value="${escapeAttr(d.responsable)}"></div>
+  `;
+  document.getElementById('listaHallazgos').appendChild(div);
+  return id;
+}
+agregarHallazgo(); // arranca con 1 hallazgo listo para llenar
+
+function escapeAttr(s){ return escapeHtml(s||'').replace(/"/g,'&quot;'); }
+
+async function generarHallazgoConIA(clienteId){
+  const apiKey = asegurarClaveIA();
+  if(!apiKey){ return; }
+
+  const cliente = DATOS.clientes.find(c=>c.id===clienteId);
+  const comentariosCliente = DATOS.comentarios.filter(c=>c.clienteId===clienteId);
+  if(comentariosCliente.length===0){ alert('Este cliente no tiene comentarios.'); return; }
+
+  const notas = comentariosCliente.map(c=>`- (${fmtFecha(c.createdAt)}, auditor ${c.auditor}): ${c.texto}`).join('\n');
+
+  const btn = document.getElementById('btnGenerarIA');
+  const textoOriginal = btn.textContent;
+  btn.disabled = true; btn.textContent = '✨ Redactando con IA...';
+
+  const prompt = `Eres un auditor interno senior de una institución de microfinanzas (CAFI). A partir de las siguientes notas de campo tomadas durante una visita de supervisión al cliente "${cliente ? cliente.nombre : ''}", redacta UN hallazgo de auditoría formal y profesional.
+
+Notas de campo del auditor:
+${notas}
+
+Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin markdown, sin backticks, con esta estructura exacta:
+{"titulo":"","condicion":"","criterio":"","causa":"","efectos":["",""],"accion":"","elementos":["",""],"responsable":""}
+
+Donde:
+- titulo: título breve del hallazgo (estilo "H-01 ...")
+- condicion: qué se encontró (basado en las notas)
+- criterio: qué debería cumplirse según normativa/políticas internas razonables de una SOFOM
+- causa: por qué ocurrió
+- efectos: arreglo de 1 a 3 riesgos o efectos concretos
+- accion: recomendación concreta
+- elementos: arreglo de 1 a 3 elementos mínimos de evidencia para el seguimiento
+- responsable: puesto responsable de atender (ej. "Gerente de Sucursal", "Asesor de crédito")`;
+
+  try{
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await resp.json();
+    if(data.error){ throw new Error(data.error.message || 'Error de la API'); }
+    const textoRespuesta = (data.content || []).filter(b=>b.type==='text').map(b=>b.text).join('');
+    const limpio = textoRespuesta.replace(/```json|```/g,'').trim();
+    const hallazgo = JSON.parse(limpio);
+
+    cambiarTab('informe');
+    const nuevoId = agregarHallazgo(hallazgo);
+    document.getElementById('hallazgo-'+nuevoId).scrollIntoView({behavior:'smooth', block:'center'});
+  }catch(err){
+    alert('No se pudo generar el hallazgo: ' + err.message);
+  }finally{
+    btn.disabled = false; btn.textContent = textoOriginal;
+  }
+}
+
+function leerHallazgos(){
+  return Array.from(document.querySelectorAll('.hallazgo-box')).map(box=>({
+    titulo: box.querySelector('.h-titulo').value,
+    condicion: box.querySelector('.h-condicion').value,
+    criterio: box.querySelector('.h-criterio').value,
+    causa: box.querySelector('.h-causa').value,
+    efectos: box.querySelector('.h-efectos').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    accion: box.querySelector('.h-accion').value,
+    elementos: box.querySelector('.h-elementos').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    responsable: box.querySelector('.h-responsable').value
+  }));
+}
+
+/* ================= EXPORTAR INFORME A WORD (usando la plantilla real) ================= */
+const PLANTILLA_WORD_URL = './plantilla_informe.docx';
+
+async function exportarWord(){
+  try{
+    const resp = await fetch(PLANTILLA_WORD_URL);
+    if(!resp.ok) throw new Error('No se encontró la plantilla en el servidor');
+    const arrayBuffer = await resp.arrayBuffer();
+
+    const zip = new PizZip(arrayBuffer);
+    const doc = new window.docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+
+    const hallazgos = leerHallazgos().map(h => ({
+      titulo: h.titulo,
+      condicion: h.condicion,
+      criterio: h.criterio,
+      causa: h.causa,
+      efectos: h.efectos,
+      accion: h.accion,
+      elementos: h.elementos.map((e,i)=> `${i+1}. ${e}`),
+      responsable: h.responsable
+    }));
+
+    doc.render({
+      periodo: document.getElementById('infPeriodo').value,
+      area: document.getElementById('infArea').value,
+      auditor: document.getElementById('infAuditor').value,
+      proceso: document.getElementById('infProceso').value,
+      fecha: document.getElementById('infFecha').value,
+      numero: document.getElementById('infNumero').value,
+      objetivo: document.getElementById('infObjetivo').value,
+      alcance: document.getElementById('infAlcance').value,
+      conclusion_general: document.getElementById('infConclusionGeneral').value,
+      firma_nombre: document.getElementById('infFirmaNombre').value,
+      firma_cargo: document.getElementById('infFirmaCargo').value,
+      hallazgos: hallazgos
+    });
+
+    const blob = doc.getZip().generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Informe_${document.getElementById('infNumero').value || 'CAFI'}.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    limpiarFormularioInforme();
+  }catch(err){
+    alert('No se pudo generar el Word: ' + err.message);
+  }
+}
+
+function limpiarFormularioInforme(){
+  ['infNumero','infFecha','infPeriodo','infArea','infAuditor','infProceso',
+   'infObjetivo','infAlcance','infConclusionGeneral'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  // Los campos de firma (nombre/cargo) se dejan tal cual, ya que normalmente no cambian.
+  document.getElementById('listaHallazgos').innerHTML = '';
+  hallazgoContador = 0;
+  agregarHallazgo();
+  toast_informe('Informe descargado y formulario limpiado');
+}
+
+function toast_informe(msg){
+  // Aviso simple, reutilizando alert si no hay un sistema de toast propio en esta vista
+  const btn = document.querySelector('main');
+  const aviso = document.createElement('div');
+  aviso.textContent = '✔ ' + msg;
+  aviso.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:999;';
+  document.body.appendChild(aviso);
+  setTimeout(()=>aviso.remove(), 2500);
+}
 
 /* ---------- Init ---------- */
-openDB().then(async ()=>{
-  SESION = cargarSesion();
-  if(SESION){ AUDITOR = SESION.nombreCompleto; }
-  await render();
-  if(SESION) restaurarDatosDesdeServidor(); // silencioso, refresca por si acaso
-});
-
-/* ---------- Registro del Service Worker (permite abrir sin internet) ---------- */
-if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('./sw.js').catch(err=>console.log('SW error', err));
-  });
-}
+// La carga de datos ahora se dispara después de verificar la clave (ver verificarClave())
 </script>
 </body>
 </html>

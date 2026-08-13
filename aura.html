@@ -436,20 +436,27 @@ const mediaCache = {};
 
 async function verFotos(idsCsv){
   const ids = idsCsv.split(',').map(s=>s.trim()).filter(Boolean);
+
+  // Abrimos la pestaña YA, con un mensaje de carga, para que se sienta al instante
+  const ventana = window.open('', '_blank');
+  ventana.document.write(`<title>Fotos</title><body style="margin:0;background:#111;color:#fff;font-family:sans-serif;padding:20px;text-align:center;"><p>⏳ Cargando foto(s)...</p></body>`);
+
   const idsFaltantes = ids.filter(id=>!mediaCache[id]);
   if(idsFaltantes.length>0){
     try{
       const resp = await fetch(APPS_SCRIPT_URL + '?accion=media&clave=' + encodeURIComponent(CLAVE) + '&ids=' + encodeURIComponent(idsFaltantes.join(',')));
       const json = await resp.json();
       if(json.ok) Object.assign(mediaCache, json.archivos);
-    }catch(err){ alert('No se pudieron cargar las fotos.'); return; }
+    }catch(err){
+      ventana.document.body.innerHTML = '<p style="color:#fff;text-align:center;">No se pudieron cargar las fotos.</p>';
+      return;
+    }
   }
   const imgsHtml = ids.map(id => mediaCache[id]
     ? `<img src="${mediaCache[id]}" style="max-width:100%;display:block;margin:0 auto 20px;">`
     : `<p style="color:#fff;text-align:center;">(No se pudo cargar una foto)</p>`
   ).join('');
-  const ventana = window.open('', '_blank');
-  ventana.document.write(`<title>Fotos</title><body style="margin:0;background:#111;padding:20px;">${imgsHtml}</body>`);
+  ventana.document.body.innerHTML = imgsHtml;
 }
 
 function aplicarAudio(el){

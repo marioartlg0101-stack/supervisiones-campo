@@ -591,6 +591,13 @@ async function transcribirUno(id){
     transcripcionCache[id] = texto || '(no se detectó voz)';
   }catch(err){
     transcripcionCache[id] = null; // marca de error, no se reintenta solo
+  } finally {
+    // Reiniciamos el worker por completo después de cada audio, para que el modelo
+    // no vaya acumulando memoria de una transcripción a otra (evita el "std::bad_alloc").
+    if(workerTranscripcion){
+      workerTranscripcion.terminate();
+      workerTranscripcion = null;
+    }
   }
   const divVigente = document.querySelector(`.transcripcion[data-audio-id="${id}"]`);
   if(divVigente){

@@ -400,7 +400,7 @@ function renderComentarios(){
     </div>
     <div class="informe-section" style="margin-bottom:16px;">
       <h3>📝 Notas del gerente sobre este cliente</h3>
-      <textarea id="notaGerenteCliente" placeholder="Tus observaciones sobre los hallazgos de este cliente...">${escapeHtml(notaExistente ? notaExistente.nota : '')}</textarea>
+      <textarea id="notaGerenteCliente" placeholder="Tus observaciones sobre los hallazgos de este cliente..." style="min-height:140px;width:100%;">${escapeHtml(notaExistente ? notaExistente.nota : '')}</textarea>
       <button class="btn ghost" style="margin-top:8px;" onclick="guardarNotaCliente('${filtro.id}')">Guardar nota</button>
       <span id="mensajeNotaCliente" style="font-size:12px;margin-left:10px;"></span>
     </div>`;
